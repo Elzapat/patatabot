@@ -10,3 +10,7 @@ async def mitsuki(ctx):
 @bot.command()
 async def gaspard(ctx):
     await ctx.channel.send(file = File("./images/gaspard/" + random.choice(os.listdir("./images/gaspard"))))
+
+@bot.command()
+async def depression(ctx):
+    await ctx.channel.send(file = File("./images/depression/" + random.choice(os.listdir("./images/depression"))))
