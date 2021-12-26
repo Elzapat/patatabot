@@ -14,3 +14,7 @@ async def gaspard(ctx):
 @bot.command()
 async def depression(ctx):
     await ctx.channel.send(file = File("./images/depression/" + random.choice(os.listdir("./images/depression"))))
+
+@bot.command(name = "chapeau", aliases = ["^^", "benoit","chapeau-chapeau"])
+async def chapeau(ctx):
+    await ctx.channel.send(file = File("./images/chapeau/" + random.choice(os.listdir("./images/chapeau"))))
