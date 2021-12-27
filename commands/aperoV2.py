@@ -8,15 +8,17 @@ from aperoV2_files.traitement_args import *
 """
 TODO:
 Axes d'amélioration :
- - voir si la timezone est gênante
- - régler la date de fin afin qu'elle puisse être choise
+ - voir si la timezone est gênante 
+    -> réglé à +01:00 en dur
+ - régler la date de fin afin qu'elle puisse être choisie
  - faire un rappel 1h (par exemple) avant le début
  - envoyer un msg de confirmation dès que la commande est réussie
  - gérer les erreurs d'incompréhension de timeparser
+ - avoir la possibilité de mettre le pour autre part qu'à la fin
 """
 
 """
-Fonction principale :
+Fonction principale
 Entrée : 
  -  la commande / le message discord
 Déclencheur : 
@@ -25,17 +27,19 @@ Déclencheur :
 Traitement : 
  -  Rajoute un événement discord selon les informations passées
     TODO : avoir un msg du bot de confirmation
-
-# FIXME le "pour" contient la description donc il tout et n'importe quoi : 
-# ça pose problème car les mots clefs sont biaisés si le pour est placé en début de commande
 """
-# @bot.command(name = "apero ", aliases = ["soirée"])
-if __name__ == "__main__":
-    # cmd = "/apero chez sam   mercredi le 15 janvier 2022 a 18h30 pour boire"
-    # cmd = "/apero chez sam mercredi à 18h30 pour boire"
-    # cmd = "/apero pour boire chez sam à 18h31 le 14 janvier"
+@bot.command(name="apero ", aliases=["soirée"])
+async def aperoV2(ctx, *args):
 
-    cmd = "/apero chez Mael et Alexis à 18h32 le 31 pour fêter le nouvel an"
+    cmd = None
+    if args == None:
+        ctx.send("vous avez rien écrit !")
+    if args is list:
+        cmd = ' '.join(args)
+    elif args is str:
+        cmd = args
+
+
     pos = decomposer_cmd(cmd)
     apero_obj = enregistrer_arguments(cmd, pos)
     apero_obj.affiche_brut()
@@ -43,6 +47,14 @@ if __name__ == "__main__":
     print(json.dumps(status, indent=4))
 
     if str(status["status_code"])[0] != "2":
-        print("ERREUR : la requête a échoué ¯\_(ツ)_/¯ ")
+        ctx.send("ERREUR : la requête a échoué ¯\_(ツ)_/¯ ")
     else:
-        print("Nouvel apéro : allez donc checker les événements discord et indiquer si vous êtes intéressés 😁")
+        ctx.send(f"{ctx.author} a rajouté un nouvel apéro : allez donc checker les événements discord et indiquer si vous êtes intéressés 😁")
+
+if __name__ == "__main__":
+    # cmd = "/apero chez sam   mercredi le 15 janvier 2022 a 18h30 pour boire"
+    # cmd = "/apero chez sam mercredi à 18h30 pour boire"
+    # cmd = "/apero pour boire chez sam à 18h31 le 14 janvier"
+
+    cmd = "/apero chez Mael et Alexis à 18h32 le 31 pour fêter le nouvel an"    
+    aperoV2(cmd)
