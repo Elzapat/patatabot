@@ -1,6 +1,4 @@
-import config
 import commands
-
 from config import TOKEN, bot
 
 @bot.event

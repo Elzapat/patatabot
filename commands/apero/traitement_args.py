@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-from aperoV2_files.apero_class import Apero
+from commands.apero.apero import Apero
 
 """
 Fonction decomposer_cmd
@@ -12,7 +12,6 @@ Sortie (return) :
  -  une liste de type d'information analysée (hebergeur, date etc.) et sa position dans la chaîne de caractère
     Si une information n'est pas fournie en entrée : valeur -1
 """
-
 
 def decomposer_cmd(cmd: str) -> list[tuple]:
     cmd = cmd.lower()
