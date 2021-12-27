@@ -4,7 +4,11 @@ import json
 from aperoV2_files.apero_class import Apero
 from aperoV2_files.requete import requete
 from aperoV2_files.traitement_args import *
+import typed_dotenv
 
+# constantes d'environnement
+env = typed_dotenv.load(".env")
+APEROV2_MAN_URL = env["APEROV2_MAN_URL"]
 """
 TODO:
 Axes d'amélioration :
@@ -39,13 +43,17 @@ async def aperoV2(ctx, *args):
         cmd = ' '.join(args)
     elif type(args) is str:
         cmd = args
+    if "help" or "?" in cmd :
+            # print(APEROV2_MAN_URL)
+            ctx.send(APEROV2_MAN_URL)
+            return
 
 
     pos = decomposer_cmd(cmd)
     apero_obj = enregistrer_arguments(cmd, pos)
     apero_obj.affiche_brut()
     status = requete(apero_obj)
-    print(json.dumps(status, indent=4))
+    # print(json.dumps(status, indent=4))
 
     if str(status["status_code"])[0] != "2":
         ctx.send("ERREUR : la requête a échoué ¯\_(ツ)_/¯ ")
@@ -56,5 +64,5 @@ if __name__ == "__main__":
     # cmd = "/apero chez sam   mercredi le 15 janvier 2022 a 18h30 pour boire"
     # cmd = "/apero chez sam mercredi à 18h30 pour boire"
     # cmd = "/apero pour boire chez sam à 18h31 le 14 janvier"
-    cmd = "/apero chez Mael et Alexis à 19:54 le 31 pour fêter le nouvel an"    
+    cmd = "/apero chez Mael et Alexis à 19:54 le 31 pour fêter le nouvel an help"    
     aperoV2(cmd)
