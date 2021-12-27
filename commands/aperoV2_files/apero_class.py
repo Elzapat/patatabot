@@ -2,7 +2,7 @@
 # -*- coding: UTF-8 -*-
 
 from datetime import datetime
-from aperoV2_classes.moment_class import Moment
+from aperoV2_files.moment_class import Moment
 
 
 class Apero:
