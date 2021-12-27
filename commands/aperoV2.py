@@ -30,13 +30,14 @@ Traitement :
 """
 @bot.command(name="apero ", aliases=["soirée"])
 async def aperoV2(ctx, *args):
+# def aperoV2(args):
 
     cmd = None
     if args == None:
         ctx.send("vous avez rien écrit !")
-    if args is list:
+    if type(args) is list:
         cmd = ' '.join(args)
-    elif args is str:
+    elif type(args) is str:
         cmd = args
 
 
@@ -55,6 +56,5 @@ if __name__ == "__main__":
     # cmd = "/apero chez sam   mercredi le 15 janvier 2022 a 18h30 pour boire"
     # cmd = "/apero chez sam mercredi à 18h30 pour boire"
     # cmd = "/apero pour boire chez sam à 18h31 le 14 janvier"
-
-    cmd = "/apero chez Mael et Alexis à 18h32 le 31 pour fêter le nouvel an"    
+    cmd = "/apero chez Mael et Alexis à 19:54 le 31 pour fêter le nouvel an"    
     aperoV2(cmd)
