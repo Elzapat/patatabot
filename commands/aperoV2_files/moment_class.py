@@ -29,23 +29,28 @@ class Moment:
 
     def setDate(self, value: str):
         self.__date_ecrite = value
-        # formule magique qui sort un objet datetime python à partir de la date écrite (même en français)
+        # formule magique qui sort un objet datetime python
+        # à partir de la date écrite (même en français)
         self.__datetime = dateparser.parse(self.__date_ecrite,  settings={
                                            'TIMEZONE': 'Europe/Paris'})
-        # si on lance un apéro à un mois d'un année suivante
-        if self.__datetime.month < self.__now.month:
-            self.__datetime = self.__datetime.replace(
-                year=self.__datetime.year + 1)
-        # si on lance un apéro sans préciser le mois,
-        # ça peut le rajouter dans le même mois, même si c'est dans le passé
-        if self.__datetime.month == self.__now.month:
-            month = self.__datetime.month
-            if month == 12:
+
+        # si la formule magique place automatiquement la date dans le passé
+        if self.__datetime < self.__now:
+            # si on lance un apéro à un mois
+            # d'un année suivante (sans préciser l'année)
+            if self.__datetime.month < self.__now.month:
                 self.__datetime = self.__datetime.replace(
-                    year=self.__datetime.year + 1, month=1)
-            else:
-                self.__datetime = self.__datetime.replace(
-                    month=self.__datetime.month + 1)
+                    year=self.__datetime.year + 1)
+            # si on lance un apéro sans préciser le mois et que ça le place
+            # automatiquement dans le passé
+            elif self.__datetime.month == self.__now.month:
+                month = self.__datetime.month
+                if month == 12:
+                    self.__datetime = self.__datetime.replace(
+                        year=self.__datetime.year + 1, month=1)
+                else:
+                    self.__datetime = self.__datetime.replace(
+                        month=self.__datetime.month + 1)
         self.majDateTime()
 
     """ Enregistrement d'une date selon le jour de la semaine """
