@@ -22,7 +22,9 @@ Traitement :
  -  Envoie la commande sur le site grâce aux variables d'environnement de connexion et d'URL (des constantes en gros)
 
 """
-def requete(apero_obj : Apero):
+
+
+def requete(apero_obj: Apero):
     # FIXME régler la timezone, apparemment ça pose pas de souci
     format = "%Y-%m-%dT%H:%M:%S.%f+01:00"
 
@@ -32,12 +34,9 @@ def requete(apero_obj : Apero):
     libelle = f"**{name}** chez **{hebergeur}**"
     if raison:
         libelle += f" pour *{raison}*"
-    
 
     datetime_debut = apero_obj.getMoment().strftime(format)
     datetime_fin = apero_obj.getFin().strftime(format)
-
-    
 
     url = f"{BASE_URL}/guilds/{GUILD_ID}/scheduled-events"
 
@@ -45,7 +44,7 @@ def requete(apero_obj : Apero):
         "channel_id": None,
         "name": name,
         "description": libelle,
-        "scheduled_start_time":datetime_debut,
+        "scheduled_start_time": datetime_debut,
         "scheduled_end_time": datetime_fin,
         "privacy_level": 2,
         "entity_type": 3,
@@ -57,16 +56,16 @@ def requete(apero_obj : Apero):
         'Authorization': f'Bot {TOKEN}',
         'Content-Type': 'application/json',
     }
-    
+
     response = requests.request("POST", url, headers=headers, data=payload)
 
     json_return = {
-        "status_code" : response.status_code
+        "status_code": response.status_code
     }
     if response.status_code == requests.codes.ok:
-        for key,value in response.json().items():
-            json_return[key] = value 
+        for key, value in response.json().items():
+            json_return[key] = value
     else:
-        json_return['url'] =url
-        json_return['payload'] =payload
+        json_return['url'] = url
+        json_return['payload'] = payload
     return json_return

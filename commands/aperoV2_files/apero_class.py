@@ -31,19 +31,17 @@ class Apero:
     def setMoment(self, type: str, value: str):
         self.__moment.setMoment(type, value)
 
-    def getMoment(self) -> datetime :
+    def getMoment(self) -> datetime:
         return self.__moment.getDateTime()
 
-    def getFin(self) -> datetime :
+    def getFin(self) -> datetime:
         return self.__moment.getDateTimeFin()
-
 
     def getDescription(self) -> str:
         return self.__description
 
     def setDescription(self, description: str):
         self.__description = description
-
 
     """afficher les données comme passées dans le message"""
 
