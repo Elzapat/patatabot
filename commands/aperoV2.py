@@ -40,9 +40,9 @@ if __name__ == "__main__":
     apero_obj = enregistrer_arguments(cmd, pos)
     apero_obj.affiche_brut()
     status = requete(apero_obj)
-    print(json.dumps(status,indent=4))
+    print(json.dumps(status, indent=4))
 
-    if str(status["status_code"])[0] != "2" :
+    if str(status["status_code"])[0] != "2":
         print("ERREUR : la requête a échoué ¯\_(ツ)_/¯ ")
     else:
         print("Nouvel apéro : allez donc checker les événements discord et indiquer si vous êtes intéressés 😁")

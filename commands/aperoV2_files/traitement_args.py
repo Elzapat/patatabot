@@ -12,7 +12,9 @@ Sortie (return) :
  -  une liste de type d'information analysée (hebergeur, date etc.) et sa position dans la chaîne de caractère
     Si une information n'est pas fournie en entrée : valeur -1
 """
-def decomposer_cmd(cmd : str) -> list[tuple]:
+
+
+def decomposer_cmd(cmd: str) -> list[tuple]:
     cmd = cmd.lower()
     print(f"commande discord passée : \"{cmd}\"")
     # position (nombre) de où sont situés les informations :
@@ -42,6 +44,7 @@ def decomposer_cmd(cmd : str) -> list[tuple]:
 
     return pos
 
+
 """
 Fonction enregistrer_arguments
 Entrée :
@@ -52,9 +55,9 @@ Sortie :
     Il contient toutes les information stockées dans des champs de l'objet
     par exemple, taper apero.getHebergeur() renverra le nom de chez qui c'est
     voir la classe Apero pour + d'infos
-
-
 """
+
+
 def enregistrer_arguments(cmd: str, pos: list[tuple]) -> Apero:
     apero_obj = Apero()
 
@@ -92,7 +95,7 @@ def enregistrer_arguments(cmd: str, pos: list[tuple]) -> Apero:
         elif cle == "heure":
             apero_obj.setMoment("heure", valeur[len("à "):])
         elif cle == "description":
-            apero_obj.setDescription( valeur[len("pour "):])
+            apero_obj.setDescription(valeur[len("pour "):])
         else:
             raise ValueError(f" type {cle} dans la list pos non reconnu.")
 
