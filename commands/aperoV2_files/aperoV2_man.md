@@ -63,4 +63,4 @@ J'ai testé en local, la requête HTTP part mais je rentre ma chaîne de caract�
 J'ai pas essayé d'utiliser discord.py en local car j'ai jamais fait ça et flemme. Donc **les instrutions relatives à discord.py n'ont pas été testées** de mon côté.
 
 ## Et sinon comment ça va vous ?
-[+ d'infos ici](bit.ly/2TuCFfu)
+[+ d'infos ici](https://bit.ly/2TuCFfu)
