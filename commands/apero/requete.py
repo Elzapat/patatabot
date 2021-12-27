@@ -1,15 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-from aperoV2_files.apero_class import Apero
+from commands.apero.apero import Apero
+from config import TOKEN, BASE_URL, GUILD_ID
 import requests
 import json
-import typed_dotenv
-
-# constantes d'environnement
-env = typed_dotenv.load(".env")
-TOKEN = env["DISCORD_TOKEN"]
-BASE_URL = env["BASE_URL"]
-GUILD_ID = env["GUILD_ID"]
 
 """
 Fonction requete
@@ -22,7 +16,6 @@ Traitement :
  -  Envoie la commande sur le site grâce aux variables d'environnement de connexion et d'URL (des constantes en gros)
 
 """
-
 
 def requete(apero_obj: Apero):
     # FIXME régler la timezone, apparemment ça pose pas de souci

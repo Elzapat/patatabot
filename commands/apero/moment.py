@@ -3,7 +3,6 @@
 import dateparser
 import datetime
 
-
 class Moment:
     """classe Moment"""
 
