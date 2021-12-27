@@ -51,6 +51,7 @@ def requete(apero_obj: Apero):
     }
 
     response = requests.request("POST", url, headers=headers, data=payload)
+    print(response)
 
     json_return = {
         "status_code": response.status_code
