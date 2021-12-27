@@ -58,12 +58,9 @@ async def apero_event(ctx, *args):
     elif type(args) is str:
         cmd = args
 
-    print(cmd)
-
     if "help" in cmd or "?" in cmd:
-        print("wtf")
         await ctx.send(APERO_MAN_URL)
-        # return
+        return
 
     pos = decomposer_cmd(cmd)
     apero_obj = enregistrer_arguments(cmd, pos)
@@ -71,6 +68,7 @@ async def apero_event(ctx, *args):
     status = requete(apero_obj)
 
     if str(status["status_code"])[0] != "2":
+        print(f"request failed: {status}")
         await ctx.send("ERREUR : la requête a échoué ¯\_(ツ)_/¯ ")
     else:
         await ctx.send(f"{ctx.author.mention} a rajouté un nouvel apéro : allez donc checker les événements discord et indiquer si vous êtes intéressés 😁")
@@ -80,4 +78,4 @@ if __name__ == "__main__":
     # cmd = "/apero chez sam mercredi à 18h30 pour boire"
     # cmd = "/apero pour boire chez sam à 18h31 le 14 janvier"
     cmd = "/apero chez Mael et Alexis à 19:54 le 31 pour fêter le nouvel an help"
-    aperoV2(cmd)
+    apero_event(cmd)
