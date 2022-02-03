@@ -30,5 +30,5 @@ async def catfaceplant(ctx):
     await ctx.channel.send(file=File("./images/catfaceplant/" + random.choice(os.listdir("./images/catfaceplant"))))
 
 @bot.command(name="murphy", aliases=["murphy", "m", "chaton", "mignon"])
-async def catfaceplant(ctx):
+async def murphy(ctx):
     await ctx.channel.send(file=File("./images/Murphy/" + random.choice(os.listdir("./images/Murphy"))))
