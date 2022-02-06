@@ -5,4 +5,3 @@
 * `python-dotenv`
 * `dataparser`
 * `requests`
-* `schedule`
