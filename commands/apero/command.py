@@ -24,7 +24,11 @@ async def apero_samuel(ctx):
         """,
         file = File("images/ricard.gif")
     )
-
+    
+@bot.command(name = "vodka")
+async def vodka(ctx):
+    ctx.send(f"T'es malade {ctx.author.mention} on ne boit pas du désinfectant!!!"})
+    
 """
 TODO:
 Axes d'amélioration :
