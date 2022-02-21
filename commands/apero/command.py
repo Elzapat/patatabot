@@ -28,6 +28,9 @@ async def apero_samuel(ctx):
 @bot.command(name = "vodka")
 async def vodka(ctx):
      await ctx.send(f"T'es malade {ctx.author.mention} on ne boit pas du désinfectant!!!")
+        
+@bot.command(name= "Ricard" aliases=["Jaune","jaune","Pt'i riri"])
+             
     
 """
 TODO:
