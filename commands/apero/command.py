@@ -29,7 +29,16 @@ async def apero_samuel(ctx):
 async def vodka(ctx):
      await ctx.send(f"T'es malade {ctx.author.mention} on ne boit pas du désinfectant!!!")
         
-@bot.command(name= "Ricard" aliases=["Jaune","jaune","Pt'i riri"])
+@bot.command(name="Ricard", aliases=["Jaune","jaune","pti riri"]
+async def vodka(ctx):
+     await ctx.send(f"Enfin des gens de gout!!Merci à toi {ctx.author.mention}, en vertu de ce service rendu à la patate nation")
+             
+     await ctx.channel.send(
+        """
+        **Nouveau chevalier de la légion du jaune**
+        """,
+        file = File("images/Logo_de_Ricard.png")
+             
              
     
 """
