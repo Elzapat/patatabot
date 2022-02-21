@@ -29,7 +29,7 @@ async def apero_samuel(ctx):
 async def vodka(ctx):
      await ctx.send(f"T'es malade {ctx.author.mention} on ne boit pas du désinfectant!!!")
         
-@bot.command(name="Ricard", aliases=["Jaune","jaune","pti riri"]
+@bot.command(name="Ricard", aliases=["Jaune","jaune","pti riri", "apero_jaune"]
 async def vive_le_jaune(ctx):
      await ctx.send(f"Enfin des gens de gout!!Merci à toi {ctx.author.mention}, en vertu de ce service rendu à la patate nation")
              
