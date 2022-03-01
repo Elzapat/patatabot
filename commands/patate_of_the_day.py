@@ -63,9 +63,9 @@ async def new_fete_of_the_day_task():
     current_fete = "Aujourd'hui nous fêtons "
     for saint in response["saints"] :
         if saint["gender"] == "F" :
-            current_fete += f"la sainte {saint['name']}, "
+            current_fete += f"la sainte pa{saint['name']}tate, "
         else:
-            current_fete += f"le saint {saint['name']}, "
+            current_fete += f"le saint pa{saint['name']}tate, "
     current_fete = current_fete[:-2]+". "
 
 
