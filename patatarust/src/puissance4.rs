@@ -164,7 +164,9 @@ pub async fn reaction_added(ctx: Context, reaction: Reaction) -> Result<(), Box<
                     execute_turn(&ctx, &mut message, game, &reaction).await?;
                 }
 
-                reaction.delete(&ctx.http).await?;
+                if !reaction.user(&ctx.http).await?.bot {
+                    reaction.delete(&ctx.http).await?;
+                }
             }
             Puissance4State::Finished => {}
         }
