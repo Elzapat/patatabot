@@ -162,8 +162,9 @@ pub async fn reaction_added(ctx: Context, reaction: Reaction) -> Result<(), Box<
             Puissance4State::Started => {
                 if reaction.user_id.ok_or("No user in reaction")? == game.players[game.playing].member.user.id {
                     execute_turn(&ctx, &mut message, game, &reaction).await?;
-                    reaction.delete(&ctx.http).await?;
                 }
+
+                reaction.delete(&ctx.http).await?;
             }
             Puissance4State::Finished => {}
         }
@@ -197,6 +198,7 @@ pub async fn execute_turn(
 
                 if check_victory(game, new_pawn_pos) {
                     game.state = Puissance4State::Finished;
+                    message.delete_reactions(&ctx.http).await?;
                 } else {
                     game.playing = (game.playing + 1) % game.number_players;
                 }
@@ -250,7 +252,7 @@ pub fn get_grid(game: &Puissance4) -> String {
         }
         Puissance4State::Finished => {
             format!(
-                "{} ({}) à gagné !\n\n",
+                "{} ({}) a gagné !\n\n",
                 game.players[game.playing].member.display_name(),
                 game.players[game.playing].symbol
             )
