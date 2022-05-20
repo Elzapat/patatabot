@@ -40,6 +40,7 @@ pub struct Player {
 
 #[derive(Debug)]
 pub struct Puissance4 {
+    pub message: Message,
     pub number_players: usize,
     pub playing: usize,
     pub state: Puissance4State,
@@ -91,23 +92,6 @@ pub async fn setup_game(
         return Ok(());
     }
 
-    *game = Some(Puissance4 {
-        number_players: 2,
-        playing: 0,
-        state: Puissance4State::NotStarted,
-        players: [
-            Player {
-                member: guild_id.member(&ctx.http, command.user.id).await?,
-                symbol: '🟡',
-            },
-            Player {
-                member: guild_id.member(&ctx.http, opponent_user_id).await?,
-                symbol: '🔴',
-            },
-        ],
-        pawns: HashMap::new(),
-    });
-
     if let Ok(message) = command
         .channel_id
         .say(
@@ -125,6 +109,24 @@ pub async fn setup_game(
         message
             .react(&ctx.http, ReactionType::Unicode(CANCEL.to_string()))
             .await?;
+
+        *game = Some(Puissance4 {
+            message,
+            number_players: 2,
+            playing: 0,
+            state: Puissance4State::NotStarted,
+            players: [
+                Player {
+                    member: guild_id.member(&ctx.http, command.user.id).await?,
+                    symbol: '🟡',
+                },
+                Player {
+                    member: guild_id.member(&ctx.http, opponent_user_id).await?,
+                    symbol: '🔴',
+                },
+            ],
+            pawns: HashMap::new(),
+        });
     }
 
     Ok(())
@@ -144,6 +146,10 @@ pub async fn reaction_added(ctx: Context, reaction: Reaction) -> Result<(), Box<
     if let Some(game) = &mut *game_opt {
         let mut message = reaction.channel_id.message(&ctx.http, reaction.message_id).await?;
 
+        if message.id != game.message.id {
+            return Ok(());
+        }
+
         match game.state {
             Puissance4State::NotStarted => {
                 if check_game_validation(&reaction, game.players[1].member.user.id) {
@@ -160,12 +166,12 @@ pub async fn reaction_added(ctx: Context, reaction: Reaction) -> Result<(), Box<
                 }
             }
             Puissance4State::Started => {
-                if reaction.user_id.ok_or("No user in reaction")? == game.players[game.playing].member.user.id {
-                    execute_turn(&ctx, &mut message, game, &reaction).await?;
-                }
-
                 if !reaction.user(&ctx.http).await?.bot {
                     reaction.delete(&ctx.http).await?;
+                }
+
+                if reaction.user_id.ok_or("No user in reaction")? == game.players[game.playing].member.user.id {
+                    execute_turn(&ctx, &mut message, game, &reaction).await?;
                 }
             }
             Puissance4State::Finished => {}
