@@ -154,12 +154,6 @@ pub async fn setup_game(
 
 // Manages a new reaction on a message
 pub async fn reaction_added(ctx: Context, reaction: Reaction) -> Result<(), Box<dyn Error>> {
-    if !reaction.user(&ctx.http).await?.bot {
-        reaction.delete(&ctx.http).await?;
-    } else {
-        return Ok(());
-    }
-
     let games_lock = {
         let data_read = ctx.data.read().await;
         data_read
@@ -177,6 +171,12 @@ pub async fn reaction_added(ctx: Context, reaction: Reaction) -> Result<(), Box<
 
         if message.id != game.message.id {
             continue;
+        }
+
+        if !reaction.user(&ctx.http).await?.bot {
+            reaction.delete(&ctx.http).await?;
+        } else {
+            return Ok(());
         }
 
         match game.state {
