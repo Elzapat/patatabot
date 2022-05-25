@@ -29,16 +29,28 @@ struct Handler;
 impl EventHandler for Handler {
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
         if let Interaction::ApplicationCommand(command) = interaction {
-            let mut start_game = None;
-
             let content = match command.data.name.as_str() {
                 "puissance4" => match check_command_validity(&command) {
-                    Ok(opponent_user_id) => {
-                        start_game = Some(opponent_user_id);
-                        "La partie est en cours de préparation...".to_owned()
+                    Ok(opponent) => {
+                        let games_lock = {
+                            let data_read = ctx.data.read().await;
+                            data_read
+                                .get::<Puissance4Game>()
+                                .expect("Expected Puissance4Game in TypeMap")
+                                .clone()
+                        };
+
+                        match setup_game(&ctx, games_lock, &command, opponent).await {
+                            Ok(res) => res,
+                            Err(e) => {
+                                eprintln!("Error in game setup {e:?}");
+                                String::from("Une erreur est survenue")
+                            }
+                        }
                     }
                     Err(e) => e,
                 },
+                "dames" => "PAS ENCORE LÀ REVIENT PLUS TARD !!!".to_owned(),
                 _ => "not implemented".to_owned(),
             };
 
@@ -52,20 +64,6 @@ impl EventHandler for Handler {
             {
                 eprintln!("Cannot respond to slash command: {e:?}");
                 return;
-            }
-
-            if let Some(opponent_user_id) = start_game {
-                let game_lock = {
-                    let data_read = ctx.data.read().await;
-                    data_read
-                        .get::<Puissance4Game>()
-                        .expect("Expected Puissance4Game in TypeMap")
-                        .clone()
-                };
-
-                if let Err(e) = setup_game(&ctx, game_lock, &command, opponent_user_id).await {
-                    eprintln!("Error in game setup {e:?}");
-                }
             }
         }
     }
@@ -86,7 +84,7 @@ impl EventHandler for Handler {
                 .expect("GUILD_ID must be an integer"),
         );
 
-        let command = Command::create_global_application_command(&ctx.http, |command| {
+        Command::create_global_application_command(&ctx.http, |command| {
             command
                 .name("puissance4")
                 .description("Un jeu de Puissance 4")
@@ -95,12 +93,26 @@ impl EventHandler for Handler {
                         .name("adversaire")
                         .description("Votre adversaire au Puissance 4")
                         .kind(CommandOptionType::User)
+                        .required(false)
+                })
+        })
+        .await
+        .unwrap();
+
+        Command::create_global_application_command(&ctx.http, |command| {
+            command
+                .name("dames")
+                .description("Un jeu de dames -- Arrive bientôt")
+                .create_option(|option| {
+                    option
+                        .name("adversaire")
+                        .description("Votre adversaire aux dames ")
+                        .kind(CommandOptionType::User)
                         .required(true)
                 })
         })
-        .await;
-
-        println!("I now have the following slash commands: {command:#?}");
+        .await
+        .unwrap();
     }
 }
 
@@ -117,7 +129,7 @@ async fn main() {
 
     {
         let mut data = client.data.write().await;
-        data.insert::<Puissance4Game>(Arc::new(RwLock::new(None)));
+        data.insert::<Puissance4Game>(Arc::new(RwLock::new(Vec::new())));
     }
 
     if let Err(e) = client.start().await {
