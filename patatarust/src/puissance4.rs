@@ -44,6 +44,7 @@ pub struct Player {
 // Struct representing a runnnign game of Puissance 4
 #[derive(Debug)]
 pub struct Puissance4 {
+    pub free_opponent: bool,
     pub message: Message,
     pub number_players: usize,
     pub playing: usize,
@@ -60,23 +61,18 @@ pub enum Puissance4State {
     Finished,
 }
 
-pub type Puissance4GameData = Arc<RwLock<Option<Puissance4>>>;
+pub type Puissance4GameData = Arc<RwLock<Vec<Puissance4>>>;
 
 // Check if the command to start the game is valid, by checking if the argument is a correct user
-pub fn check_command_validity(command: &ApplicationCommandInteraction) -> Result<UserId, String> {
-    let user_option = command
-        .data
-        .options
-        .get(0)
-        .expect("Expected user option")
-        .resolved
-        .as_ref()
-        .expect("Expected user object");
-
-    if let CommandDataOptionValue::User(user, _member) = user_option {
-        Ok(user.id)
+pub fn check_command_validity(command: &ApplicationCommandInteraction) -> Result<Option<UserId>, String> {
+    if let Some(arg) = command.data.options.get(0) {
+        if let CommandDataOptionValue::User(user, _member) = arg.resolved.as_ref().expect("Expected user object") {
+            Ok(Some(user.id))
+        } else {
+            Err("Utilisateur inconnu".to_owned())
+        }
     } else {
-        Err("Utilisateur inconnu".to_owned())
+        Ok(None)
     }
 }
 
@@ -85,34 +81,44 @@ pub async fn setup_game(
     ctx: &Context,
     game_lock: Puissance4GameData,
     command: &ApplicationCommandInteraction,
-    opponent_user_id: UserId,
-) -> Result<(), Box<dyn Error>> {
+    opponent: Option<UserId>,
+) -> Result<String, Box<dyn Error>> {
     let guild_id = command
         .guild_id
         .unwrap_or_else(|| GuildId(std::env::var("GUILD_ID").unwrap().parse::<u64>().unwrap()));
-    let mut game = game_lock.write().await;
-    if game.is_some() {
-        command
-            .channel_id
-            .say(&ctx.http, "Une partie de puissance 4 est déjà en cours")
-            .await?;
-        return Ok(());
-    } else if opponent_user_id.to_user(&ctx.http).await?.bot {
-        command
-            .channel_id
-            .say(&ctx.http, "Tu ne peux pas faire une partie contre un bot")
-            .await?;
-        return Ok(());
+    let mut games = game_lock.write().await;
+
+    if let Some(opponent_user_id) = opponent {
+        for game in games.iter() {
+            if game.players[0].member.user.id == command.user.id || game.players[1].member.user.id == command.user.id {
+                return Ok("Tu es déjà en train de jouer une partie".to_owned());
+            }
+
+            if game.players[0].member.user.id == opponent_user_id || game.players[1].member.user.id == opponent_user_id
+            {
+                return Ok("L'adversaire est déjà en train de jouer une partie".to_owned());
+            }
+        }
+
+        if opponent_user_id.to_user(&ctx.http).await?.bot {
+            return Ok("Tu ne peux pas faire une partie contre un bot".to_owned());
+        }
     }
 
     if let Ok(message) = command
         .channel_id
         .say(
             &ctx.http,
-            format!(
-                "<@{opponent_user_id}>, acceptes-tu le match de Puissance 4 contre <@{}>",
-                command.user.id
-            ),
+            match opponent {
+                Some(opponent_user_id) => format!(
+                    "<@{opponent_user_id}>, acceptes-tu le match de Puissance 4 contre <@{}>",
+                    command.user.id
+                ),
+                None => format!(
+                    "<@{}> recherche un adversaire pour faire un Puissance 4",
+                    command.user.id
+                ),
+            },
         )
         .await
     {
@@ -123,7 +129,8 @@ pub async fn setup_game(
             .react(&ctx.http, ReactionType::Unicode(CANCEL.to_string()))
             .await?;
 
-        *game = Some(Puissance4 {
+        games.push(Puissance4 {
+            free_opponent: opponent.is_none(),
             message,
             number_players: 2,
             playing: 0,
@@ -134,7 +141,7 @@ pub async fn setup_game(
                     symbol: '🟡',
                 },
                 Player {
-                    member: guild_id.member(&ctx.http, opponent_user_id).await?,
+                    member: guild_id.member(&ctx.http, opponent.unwrap_or(command.user.id)).await?,
                     symbol: '🔴',
                 },
             ],
@@ -142,12 +149,18 @@ pub async fn setup_game(
         });
     }
 
-    Ok(())
+    Ok("La partie est en cours de préapartion...".to_owned())
 }
 
 // Manages a new reaction on a message
 pub async fn reaction_added(ctx: Context, reaction: Reaction) -> Result<(), Box<dyn Error>> {
-    let game_lock = {
+    if !reaction.user(&ctx.http).await?.bot {
+        reaction.delete(&ctx.http).await?;
+    } else {
+        return Ok(());
+    }
+
+    let games_lock = {
         let data_read = ctx.data.read().await;
         data_read
             .get::<Puissance4Game>()
@@ -155,22 +168,32 @@ pub async fn reaction_added(ctx: Context, reaction: Reaction) -> Result<(), Box<
             .clone()
     };
 
-    let mut game_opt = game_lock.write().await;
+    let mut message = reaction.channel_id.message(&ctx.http, reaction.message_id).await?;
+    let mut games = games_lock.write().await;
+    let mut idx = 0;
 
-    if let Some(game) = &mut *game_opt {
-        let mut message = reaction.channel_id.message(&ctx.http, reaction.message_id).await?;
+    while idx < games.len() {
+        let game = &mut games[idx];
 
         if message.id != game.message.id {
-            return Ok(());
-        }
-
-        if !reaction.user(&ctx.http).await?.bot {
-            reaction.delete(&ctx.http).await?;
+            continue;
         }
 
         match game.state {
             Puissance4State::NotStarted => {
-                if check_game_validation(&reaction, game.players[1].member.user.id) {
+                if check_game_validation(
+                    &reaction,
+                    game.players[if game.free_opponent { 0 } else { 1 }].member.user.id,
+                    game.free_opponent,
+                ) {
+                    if game.free_opponent {
+                        game.players[1].member = reaction
+                            .guild_id
+                            .unwrap()
+                            .member(&ctx.http, reaction.user_id.unwrap())
+                            .await?;
+                    }
+
                     game.state = Puissance4State::Started;
                     message.delete_reactions(&ctx.http).await?;
 
@@ -181,10 +204,11 @@ pub async fn reaction_added(ctx: Context, reaction: Reaction) -> Result<(), Box<
                             .react(&ctx.http, ReactionType::Unicode(emoji.to_string()))
                             .await?;
                     }
-                } else if check_game_cancel(&reaction, game.players[1].member.user.id) {
-                    *game_opt = None;
+                } else if check_game_cancel(&reaction, &game.players) {
+                    games.remove(idx);
                     message.edit(&ctx.http, |m| m.content("Partie refusée.")).await?;
-                    return Ok(());
+                    message.delete_reactions(&ctx.http).await?;
+                    continue;
                 }
             }
             Puissance4State::Started => {
@@ -196,8 +220,11 @@ pub async fn reaction_added(ctx: Context, reaction: Reaction) -> Result<(), Box<
         }
 
         if let Puissance4State::Finished = game.state {
-            *game_opt = None;
+            games.remove(idx);
+            continue;
         }
+
+        idx += 1;
     }
 
     Ok(())
@@ -259,15 +286,17 @@ fn check_side<F: Fn(i8) -> Position>(game: &Puissance4, get_offset: F, symbol: &
         || (-1..=2).map(get_offset).all(|pos| game.pawns.get(&pos) == Some(symbol))
 }
 
-pub fn check_game_validation(reaction: &Reaction, opp_id: UserId) -> bool {
-    reaction.emoji == ReactionType::Unicode(VALIDATE.to_string()) && reaction.user_id == Some(opp_id)
+fn check_game_validation(reaction: &Reaction, opp_id: UserId, free_opp: bool) -> bool {
+    (free_opp && reaction.user_id != Some(opp_id))
+        || (reaction.emoji == ReactionType::Unicode(VALIDATE.to_string()) && reaction.user_id == Some(opp_id))
 }
 
-pub fn check_game_cancel(reaction: &Reaction, opp_id: UserId) -> bool {
-    reaction.emoji == ReactionType::Unicode(CANCEL.to_string()) && reaction.user_id == Some(opp_id)
+fn check_game_cancel(reaction: &Reaction, players: &[Player; 2]) -> bool {
+    reaction.emoji == ReactionType::Unicode(CANCEL.to_string())
+        && (reaction.user_id == Some(players[0].member.user.id) || reaction.user_id == Some(players[1].member.user.id))
 }
 
-pub fn get_grid(game: &Puissance4) -> String {
+fn get_grid(game: &Puissance4) -> String {
     let mut grid = match game.state {
         Puissance4State::Started => {
             format!(
