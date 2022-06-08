@@ -1,5 +1,6 @@
 use crate::Puissance4Game;
 use serenity::{
+    builder::CreateEmbed,
     model::{
         application::interaction::application_command::{ApplicationCommandInteraction, CommandDataOptionValue},
         channel::{Message, Reaction, ReactionType},
@@ -8,10 +9,12 @@ use serenity::{
     },
     prelude::*,
 };
-use std::{collections::HashMap, error::Error, sync::Arc};
+use std::{collections::HashMap, error::Error, fs, sync::Arc};
 use tokio::sync::RwLock;
 
 // Size of Puissance 4 grid
+pub const LEADERBOARD_FILENAME: &str = "puissance4_leaderboard.ron";
+pub const PATATE_GUILD_ID: GuildId = GuildId(675349992130478080);
 pub const GRID_WIDTH: i8 = 7;
 pub const GRID_HEIGHT: i8 = 6;
 pub const VALIDATE: char = '✅';
@@ -20,6 +23,8 @@ pub const LETTER_EMOJIS: [char; 26] = [
     '🇦', '🇧', '🇨', '🇩', '🇪', '🇫', '🇬', '🇭', '🇮', '🇯', '🇰', '🇱', '🇲', '🇳', '🇴', '🇵', '🇶', '🇷', '🇸', '🇹', '🇺', '🇻', '🇼',
     '🇽', '🇾', '🇿',
 ];
+
+type Puissance4Leaderboard = HashMap<UserId, (u32, u32)>;
 
 // Struct representing a position on the grid
 #[derive(Hash, Debug, Eq, PartialEq, Copy, Clone)]
@@ -41,7 +46,7 @@ pub struct Player {
     pub symbol: char,
 }
 
-// Struct representing a runnnign game of Puissance 4
+// Struct representing a runnig game of Puissance 4
 #[derive(Debug)]
 pub struct Puissance4 {
     pub free_opponent: bool,
@@ -252,6 +257,10 @@ pub async fn execute_turn(
                 if check_victory(game, new_pawn_pos) {
                     game.state = Puissance4State::Finished;
                     message.delete_reactions(&ctx.http).await?;
+                    write_leaderboard(
+                        game.players[game.playing].member.user.id,
+                        game.players[if game.playing == 1 { 0 } else { 1 }].member.user.id,
+                    );
                 } else {
                     game.playing = (game.playing + 1) % game.number_players;
                 }
@@ -341,4 +350,54 @@ fn get_grid(game: &Puissance4) -> String {
     }
 
     grid
+}
+
+fn write_leaderboard(winner_id: UserId, loser_id: UserId) {
+    let leaderboard_raw = fs::read_to_string(LEADERBOARD_FILENAME).unwrap();
+    let mut leaderboard: Puissance4Leaderboard = ron::from_str(&leaderboard_raw).unwrap();
+
+    let winner = leaderboard.entry(winner_id).or_insert((0, 0));
+    winner.0 += 1;
+
+    let loser = leaderboard.entry(loser_id).or_insert((0, 0));
+    loser.1 += 1;
+
+    fs::write(LEADERBOARD_FILENAME, ron::to_string(&leaderboard).unwrap()).unwrap();
+}
+
+pub async fn get_leaderbaord(ctx: &Context) -> impl FnOnce(&mut CreateEmbed) -> &mut CreateEmbed {
+    let leaderboard_raw = fs::read_to_string(LEADERBOARD_FILENAME).unwrap();
+    let leaderboard: Puissance4Leaderboard = ron::from_str(&leaderboard_raw).unwrap();
+    let mut fields = Vec::new();
+
+    let mut leaderboard = leaderboard.iter().collect::<Vec<_>>();
+    leaderboard.sort_by(|(_, (wins1, _)), (_, (wins2, _))| wins1.cmp(wins2));
+
+    for (rank, (user_id, (wins, losses))) in leaderboard.iter().enumerate() {
+        let user = user_id.to_user(&ctx.http).await.unwrap();
+
+        fields.push((
+            format!(
+                "#{} {} ({})",
+                rank + 1,
+                user.nick_in(&ctx.http, PATATE_GUILD_ID).await.unwrap(),
+                user.name,
+            ),
+            format!("`Victoires : {:<4}  Défaites : {}`", wins, losses),
+            false,
+        ));
+    }
+
+    let icon = PATATE_GUILD_ID.to_partial_guild(&ctx.http).await.unwrap().icon_url();
+
+    move |mut embed| {
+        if let Some(icon) = icon {
+            embed = embed.author(|a| a.icon_url(icon).name("Classement Puissance 4"));
+        }
+
+        embed
+            // .title("Classement par victoires")
+            .fields(fields)
+            .color(serenity::utils::Color::GOLD)
+    }
 }

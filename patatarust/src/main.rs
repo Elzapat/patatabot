@@ -1,6 +1,6 @@
 mod puissance4;
 
-use puissance4::*;
+use puissance4::{check_command_validity, get_leaderbaord, reaction_added, setup_game, Puissance4GameData};
 use serenity::{
     async_trait,
     model::{
@@ -50,6 +50,19 @@ impl EventHandler for Handler {
                     }
                     Err(e) => e,
                 },
+                "puissance4-classement" => {
+                    let embed_builder = get_leaderbaord(&ctx).await;
+                    command
+                        .create_interaction_response(&ctx.http, |response| {
+                            response
+                                .kind(InteractionResponseType::ChannelMessageWithSource)
+                                .interaction_response_data(|message| message.embed(embed_builder))
+                        })
+                        .await
+                        .unwrap();
+
+                    return;
+                }
                 "dames" => "PAS ENCORE LÀ REVIENT PLUS TARD !!!".to_owned(),
                 _ => "not implemented".to_owned(),
             };
@@ -110,6 +123,14 @@ impl EventHandler for Handler {
                         .kind(CommandOptionType::User)
                         .required(true)
                 })
+        })
+        .await
+        .unwrap();
+
+        Command::create_global_application_command(&ctx.http, |command| {
+            command
+                .name("puissance4-classement")
+                .description("Le classement du Puissance 4")
         })
         .await
         .unwrap();
