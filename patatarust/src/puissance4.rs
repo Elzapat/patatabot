@@ -1,4 +1,5 @@
 use crate::Puissance4Game;
+use serde::{Deserialize, Serialize};
 use serenity::{
     builder::CreateEmbed,
     model::{
@@ -9,11 +10,11 @@ use serenity::{
     },
     prelude::*,
 };
-use std::{collections::HashMap, error::Error, fs, sync::Arc};
+use std::{collections::HashMap, default::Default, error::Error, fs, sync::Arc};
 use tokio::sync::RwLock;
 
 // Size of Puissance 4 grid
-pub const LEADERBOARD_FILENAME: &str = "puissance4_leaderboard.ron";
+pub const LEADERBOARD_FILENAME: &str = "puissance4_stats.ron";
 pub const PATATE_GUILD_ID: GuildId = GuildId(675349992130478080);
 pub const GRID_WIDTH: i8 = 7;
 pub const GRID_HEIGHT: i8 = 6;
@@ -24,7 +25,39 @@ pub const LETTER_EMOJIS: [char; 26] = [
     '🇽', '🇾', '🇿',
 ];
 
-type Puissance4Leaderboard = HashMap<UserId, (u32, u32)>;
+#[derive(Serialize, Deserialize, Debug)]
+struct Puissance4Stats {
+    average_turns: f32,
+    player_stats: HashMap<UserId, PlayerStats>,
+}
+
+impl Default for Puissance4Stats {
+    fn default() -> Self {
+        Puissance4Stats {
+            average_turns: 0.0,
+            player_stats: HashMap::new(),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct PlayerStats {
+    wins: u32,
+    losses: u32,
+    average_turns: f32,
+    matchups: HashMap<UserId, u32>,
+}
+
+impl Default for PlayerStats {
+    fn default() -> Self {
+        PlayerStats {
+            wins: 0,
+            losses: 0,
+            average_turns: 0.0,
+            matchups: HashMap::new(),
+        }
+    }
+}
 
 // Struct representing a position on the grid
 #[derive(Hash, Debug, Eq, PartialEq, Copy, Clone)]
@@ -56,6 +89,7 @@ pub struct Puissance4 {
     pub state: Puissance4State,
     pub players: [Player; 2],
     pub pawns: HashMap<Position, char>,
+    number_of_turns: u32,
 }
 
 // State of the Puissance 4 game
@@ -151,6 +185,7 @@ pub async fn setup_game(
                 },
             ],
             pawns: HashMap::new(),
+            number_of_turns: 0,
         });
     }
 
@@ -241,6 +276,8 @@ pub async fn execute_turn(
     game: &mut Puissance4,
     reaction: &Reaction,
 ) -> Result<(), Box<dyn Error>> {
+    game.number_of_turns += 1;
+
     if let ReactionType::Unicode(emoji) = &reaction.emoji {
         let reaction_emoji = emoji.chars().next().ok_or("Reaction emoji empty")?;
 
@@ -257,10 +294,7 @@ pub async fn execute_turn(
                 if check_victory(game, new_pawn_pos) {
                     game.state = Puissance4State::Finished;
                     message.delete_reactions(&ctx.http).await?;
-                    write_leaderboard(
-                        game.players[game.playing].member.user.id,
-                        game.players[if game.playing == 1 { 0 } else { 1 }].member.user.id,
-                    );
+                    update_stats(game);
                 } else {
                     game.playing = (game.playing + 1) % game.number_players;
                 }
@@ -352,28 +386,47 @@ fn get_grid(game: &Puissance4) -> String {
     grid
 }
 
-fn write_leaderboard(winner_id: UserId, loser_id: UserId) {
-    let leaderboard_raw = fs::read_to_string(LEADERBOARD_FILENAME).unwrap();
-    let mut leaderboard: Puissance4Leaderboard = ron::from_str(&leaderboard_raw).unwrap();
+fn update_stats(game: &Puissance4) {
+    let winner_id = game.players[game.playing].member.user.id;
+    let loser_id = game.players[if game.playing == 1 { 0 } else { 1 }].member.user.id;
 
-    let winner = leaderboard.entry(winner_id).or_insert((0, 0));
-    winner.0 += 1;
+    let stats_raw = fs::read_to_string(LEADERBOARD_FILENAME).unwrap();
+    let mut stats: Puissance4Stats = match ron::from_str(&stats_raw) {
+        Ok(stats) => stats,
+        Err(e) => {
+            eprintln!("Error reading stats file : {e:?}");
+            return;
+        }
+    };
 
-    let loser = leaderboard.entry(loser_id).or_insert((0, 0));
-    loser.1 += 1;
+    stats.average_turns = (stats.average_turns + game.number_of_turns as f32) / 2.0;
 
-    fs::write(LEADERBOARD_FILENAME, ron::to_string(&leaderboard).unwrap()).unwrap();
+    let winner_stats = stats.player_stats.entry(winner_id).or_insert_with(PlayerStats::default);
+    winner_stats.wins += 1;
+    winner_stats.average_turns = (winner_stats.average_turns + game.number_players as f32) / 2.0;
+    *winner_stats.matchups.entry(winner_id).or_insert(0) += 1;
+
+    let loser_stats = stats.player_stats.entry(loser_id).or_insert_with(PlayerStats::default);
+    loser_stats.losses += 1;
+    loser_stats.average_turns = (loser_stats.average_turns + game.number_players as f32) / 2.0;
+    *loser_stats.matchups.entry(loser_id).or_insert(0) += 1;
+
+    fs::write(LEADERBOARD_FILENAME, ron::to_string(&stats).unwrap()).unwrap();
 }
 
 pub async fn get_leaderbaord(ctx: &Context) -> impl FnOnce(&mut CreateEmbed) -> &mut CreateEmbed {
-    let leaderboard_raw = fs::read_to_string(LEADERBOARD_FILENAME).unwrap();
-    let leaderboard: Puissance4Leaderboard = ron::from_str(&leaderboard_raw).unwrap();
+    let stats_raw = fs::read_to_string(LEADERBOARD_FILENAME).unwrap();
+    let stats: Puissance4Stats = ron::from_str(&stats_raw).unwrap_or_default();
     let mut fields = Vec::new();
 
-    let mut leaderboard = leaderboard.iter().collect::<Vec<_>>();
-    leaderboard.sort_by(|(_, (wins1, _)), (_, (wins2, _))| wins1.cmp(wins2));
+    let mut leaderboard = stats.player_stats.iter().collect::<Vec<_>>();
+    leaderboard.sort_by(|(_, stats1), (_, stats2)| stats1.wins.cmp(&stats2.wins));
 
-    for (rank, (user_id, (wins, losses))) in leaderboard.iter().enumerate() {
+    for (rank, (user_id, stats)) in leaderboard.iter().enumerate() {
+        if rank > 10 {
+            break;
+        }
+
         let user = user_id.to_user(&ctx.http).await.unwrap();
 
         fields.push((
@@ -383,7 +436,7 @@ pub async fn get_leaderbaord(ctx: &Context) -> impl FnOnce(&mut CreateEmbed) -> 
                 user.nick_in(&ctx.http, PATATE_GUILD_ID).await.unwrap(),
                 user.name,
             ),
-            format!("`Victoires : {:<4}  Défaites : {}`", wins, losses),
+            format!("`Victoires : {:<4}  Défaites : {}`", stats.wins, stats.losses),
             false,
         ));
     }
