@@ -10,7 +10,6 @@ use serenity::{
         },
         channel::Reaction,
         gateway::Ready,
-        id::GuildId,
     },
     prelude::*,
 };
@@ -61,6 +60,13 @@ impl EventHandler for Handler {
                         .await
                         .unwrap();
 
+                    println!(
+                        "interaction response id : {:?}",
+                        ctx.http
+                            .get_original_interaction_response(&command.data.id.to_string())
+                            .await
+                    );
+
                     return;
                 }
                 "dames" => "PAS ENCORE LÀ REVIENT PLUS TARD !!!".to_owned(),
@@ -71,7 +77,7 @@ impl EventHandler for Handler {
                 .create_interaction_response(&ctx.http, |response| {
                     response
                         .kind(InteractionResponseType::ChannelMessageWithSource)
-                        .interaction_response_data(|message| message.content(content))
+                        .interaction_response_data(|message| message.content(content).ephemeral(true))
                 })
                 .await
             {
@@ -89,13 +95,6 @@ impl EventHandler for Handler {
 
     async fn ready(&self, ctx: Context, ready: Ready) {
         println!("{} is connected!", ready.user.name);
-
-        let guild_id = GuildId(
-            env::var("GUILD_ID")
-                .expect("Expected GUILD_ID in env")
-                .parse()
-                .expect("GUILD_ID must be an integer"),
-        );
 
         Command::create_global_application_command(&ctx.http, |command| {
             command

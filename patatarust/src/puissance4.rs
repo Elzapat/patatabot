@@ -97,7 +97,7 @@ pub struct Puissance4 {
 pub enum Puissance4State {
     NotStarted,
     Started,
-    Finished,
+    Finished { draw: bool },
 }
 
 pub type Puissance4GameData = Arc<RwLock<Vec<Puissance4>>>;
@@ -189,7 +189,7 @@ pub async fn setup_game(
         });
     }
 
-    Ok("La partie est en cours de préapartion...".to_owned())
+    Ok("La partie est en cours de préparation...".to_owned())
 }
 
 // Manages a new reaction on a message
@@ -210,12 +210,14 @@ pub async fn reaction_added(ctx: Context, reaction: Reaction) -> Result<(), Box<
         let game = &mut games[idx];
 
         if message.id != game.message.id {
+            println!("Message id does not match");
             continue;
         }
 
         if !reaction.user(&ctx.http).await?.bot {
             reaction.delete(&ctx.http).await?;
         } else {
+            println!("Reaction was from a bot");
             return Ok(());
         }
 
@@ -254,12 +256,14 @@ pub async fn reaction_added(ctx: Context, reaction: Reaction) -> Result<(), Box<
             Puissance4State::Started => {
                 if reaction.user_id.ok_or("No user in reaction")? == game.players[game.playing].member.user.id {
                     execute_turn(&ctx, &mut message, game, &reaction).await?;
+                } else {
+                    println!("Reaction user id different from user id in game");
                 }
             }
-            Puissance4State::Finished => {}
+            Puissance4State::Finished { draw: _ } => println!("Game is finished"),
         }
 
-        if let Puissance4State::Finished = game.state {
+        if let Puissance4State::Finished { draw: _ } = game.state {
             games.remove(idx);
             continue;
         }
@@ -291,8 +295,10 @@ pub async fn execute_turn(
             if new_pawn_pos.y < GRID_HEIGHT {
                 game.pawns.insert(new_pawn_pos, game.players[game.playing].symbol);
 
-                if check_victory(game, new_pawn_pos) {
-                    game.state = Puissance4State::Finished;
+                if check_finish(game, new_pawn_pos) {
+                    game.state = Puissance4State::Finished {
+                        draw: game.pawns.len() >= (GRID_WIDTH * GRID_HEIGHT) as usize,
+                    };
                     message.delete_reactions(&ctx.http).await?;
                     update_stats(game);
                 } else {
@@ -307,7 +313,7 @@ pub async fn execute_turn(
     Ok(())
 }
 
-fn check_victory(game: &Puissance4, pos: Position) -> bool {
+fn check_finish(game: &Puissance4, pos: Position) -> bool {
     let check_left = pos.x > 1;
     let check_right = pos.x < GRID_WIDTH - 2;
     let check_down = pos.y > 1;
@@ -322,6 +328,7 @@ fn check_victory(game: &Puissance4, pos: Position) -> bool {
         || (check_up && check_right && check_side(game, |o| Position::new(pos.x + o, pos.y + o), symbol))
         || (check_right && check_down && check_side(game, |o| Position::new(pos.x + o, pos.y - o), symbol))
         || (check_down && check_left && check_side(game, |o| Position::new(pos.x - o, pos.y - o), symbol))
+        || game.pawns.len() >= (GRID_WIDTH * GRID_HEIGHT) as usize
 }
 
 fn check_side<F: Fn(i8) -> Position>(game: &Puissance4, get_offset: F, symbol: &char) -> bool {
@@ -340,24 +347,39 @@ fn check_game_cancel(reaction: &Reaction, players: &[Player; 2]) -> bool {
 }
 
 fn get_grid(game: &Puissance4) -> String {
+    let playing = &game.players[game.playing];
+    let not_playing = &game.players[if game.playing == 1 { 0 } else { 1 }];
+
     let mut grid = match game.state {
         Puissance4State::Started => {
             format!(
-                "{} ({}) vs {} ({})\nC'est au tour de {} ({})\n\n",
+                "{} ({}) VS {} ({})\nC'est au tour de {} ({})\n\n",
                 game.players[0].member.display_name(),
                 game.players[0].symbol,
                 game.players[1].member.display_name(),
                 game.players[1].symbol,
-                game.players[game.playing].member.display_name(),
-                game.players[game.playing].symbol,
+                playing.member.display_name(),
+                playing.symbol,
             )
         }
-        Puissance4State::Finished => {
-            format!(
-                "{} ({}) a gagné !\n\n",
-                game.players[game.playing].member.display_name(),
-                game.players[game.playing].symbol
-            )
+        Puissance4State::Finished { draw } => {
+            if draw {
+                format!(
+                    "Égalité du match {} ({}) VS {} ({})\n\n",
+                    playing.member.display_name(),
+                    playing.symbol,
+                    not_playing.member.display_name(),
+                    not_playing.symbol,
+                )
+            } else {
+                format!(
+                    "{} ({}) a gagné contre {} ({})!\n\n",
+                    playing.member.display_name(),
+                    playing.symbol,
+                    not_playing.member.display_name(),
+                    not_playing.symbol,
+                )
+            }
         }
         Puissance4State::NotStarted => String::new(),
     };
@@ -403,13 +425,13 @@ fn update_stats(game: &Puissance4) {
 
     let winner_stats = stats.player_stats.entry(winner_id).or_insert_with(PlayerStats::default);
     winner_stats.wins += 1;
-    winner_stats.average_turns = (winner_stats.average_turns + game.number_players as f32) / 2.0;
-    *winner_stats.matchups.entry(winner_id).or_insert(0) += 1;
+    winner_stats.average_turns = (winner_stats.average_turns + game.number_of_turns as f32) / 2.0;
+    *winner_stats.matchups.entry(loser_id).or_insert(0) += 1;
 
     let loser_stats = stats.player_stats.entry(loser_id).or_insert_with(PlayerStats::default);
     loser_stats.losses += 1;
-    loser_stats.average_turns = (loser_stats.average_turns + game.number_players as f32) / 2.0;
-    *loser_stats.matchups.entry(loser_id).or_insert(0) += 1;
+    loser_stats.average_turns = (loser_stats.average_turns + game.number_of_turns as f32) / 2.0;
+    *loser_stats.matchups.entry(winner_id).or_insert(0) += 1;
 
     fs::write(LEADERBOARD_FILENAME, ron::to_string(&stats).unwrap()).unwrap();
 }
@@ -420,7 +442,7 @@ pub async fn get_leaderbaord(ctx: &Context) -> impl FnOnce(&mut CreateEmbed) -> 
     let mut fields = Vec::new();
 
     let mut leaderboard = stats.player_stats.iter().collect::<Vec<_>>();
-    leaderboard.sort_by(|(_, stats1), (_, stats2)| stats1.wins.cmp(&stats2.wins));
+    leaderboard.sort_by(|(_, stats1), (_, stats2)| stats2.wins.cmp(&stats1.wins));
 
     for (rank, (user_id, stats)) in leaderboard.iter().enumerate() {
         if rank > 10 {
@@ -436,7 +458,12 @@ pub async fn get_leaderbaord(ctx: &Context) -> impl FnOnce(&mut CreateEmbed) -> 
                 user.nick_in(&ctx.http, PATATE_GUILD_ID).await.unwrap(),
                 user.name,
             ),
-            format!("`Victoires : {:<4}  Défaites : {}`", stats.wins, stats.losses),
+            format!(
+                "`Victoires : {:<4}  Défaites : {:<4} Ratio V/D : {:.2}`",
+                stats.wins,
+                stats.losses,
+                stats.wins as f32 / stats.losses as f32
+            ),
             false,
         ));
     }
