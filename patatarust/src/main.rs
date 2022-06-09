@@ -60,13 +60,6 @@ impl EventHandler for Handler {
                         .await
                         .unwrap();
 
-                    println!(
-                        "interaction response id : {:?}",
-                        ctx.http
-                            .get_original_interaction_response(&command.data.id.to_string())
-                            .await
-                    );
-
                     return;
                 }
                 "dames" => "PAS ENCORE LÀ REVIENT PLUS TARD !!!".to_owned(),
