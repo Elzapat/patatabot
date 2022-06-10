@@ -15,8 +15,8 @@ class Pion:
         self.__j1PionFic = "x"
         self.__j1DameAff = "🤍"
         self.__j1DameFic = "X"
-        self.__SelectPionAff = "🔵"
-        self.__SelectDameAff = "💙"
+        self.__selectPionAff = "🔵"
+        self.__selectDameAff = "💙"
 
     def estDame(self) -> bool:
         return self.__dame
@@ -51,9 +51,9 @@ class Pion:
     def affiche(self,sauvegarde=False) -> str:
         if self.__select :
             if self.__dame:
-                return self.__SelectDameAff
+                return self.__selectDameAff
             else:
-                return self.__SelectPionAff
+                return self.__selectPionAff
 
 
         if self.__joueur == 2:

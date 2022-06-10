@@ -5,8 +5,8 @@ import asyncio
 import nest_asyncio
 nest_asyncio.apply()
 
-async def affiche(msg,message_a_edit):
-    await message_a_edit.edit(content=msg)
+async def affiche(msg,messageAEdit):
+    await messageAEdit.edit(content=msg)
 
 async def prompt(ctx,joueur : str = False):
     channelBon = False
@@ -51,7 +51,7 @@ async def identification(ctx) -> str:
 
 @bot.command(aliases = ["dame"])
 async def dames(ctx, Arg = None):
-    msg_accueil = f"""
+    msgAccueil = f"""
         **Jeu des dames** version **bêta**
         **Mode débug :** ```
          - n'importe qui peut jouer à la place du joueur concerné
@@ -61,20 +61,20 @@ async def dames(ctx, Arg = None):
          - S'il vous reste plus qu'un pion et qu'il ne peut pas bouger : la partie est bloquée```
         *Si vous constatez des bugs: allez raler auprès d'Alexis*
         """
-    message_a_edit = await ctx.channel.send(msg_accueil)
+    messageAEdit = await ctx.channel.send(msgAccueil)
     if Arg == "load" or Arg == "reprendre" :
-        jeu = Jeu(affiche,prompt,message_a_edit,ctx)
+        jeu = Jeu(affiche,prompt,messageAEdit,ctx)
         jeu.chargementJeu()
         jeu.commenceJeu()
         await ctx.channel.send("Fin du programme")
     elif Arg == "new" or Arg == "nouveau" :
         j1 = None
         j2 = None
-        await affiche("joueur 1, identifiez vous en envoyant un message lambda ci-dessous",message_a_edit)
+        await affiche("joueur 1, identifiez vous en envoyant un message lambda ci-dessous",messageAEdit)
         j1 = await identification(ctx)
-        await affiche("joueur 2, identifiez vous en envoyant un message lambda ci-dessous",message_a_edit)
+        await affiche("joueur 2, identifiez vous en envoyant un message lambda ci-dessous",messageAEdit)
         j2 = await identification(ctx)
-        jeu = Jeu(affiche,prompt,message_a_edit,ctx)
+        jeu = Jeu(affiche,prompt,messageAEdit,ctx)
         jeu.nouvellePartie(j1,j2)
         jeu.commenceJeu()
         await ctx.channel.send("Fin du programme")
@@ -91,4 +91,4 @@ async def dames(ctx, Arg = None):
         Pour **changer de pion sélectionné** :\n\ttapez n'importe quoi, le jeu va ne va pas trouver la case de destination et vous devrez choisir de nouveau le pion à déplacer.
         Pour **manger en rafle** :\n\ttapez la liste des cases de destination séparés par une *virgule* sans espacement, par exemple `e2,C4` ou `E10,G8,e6` ...
         """
-        await affiche(msg_accueil + regles,message_a_edit)
+        await affiche(msgAccueil + regles,messageAEdit)
