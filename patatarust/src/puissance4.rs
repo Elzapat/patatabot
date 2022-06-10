@@ -427,8 +427,8 @@ fn update_stats(game: &Puissance4) {
         winner_stats.draws += 1;
         winner_stats.matchups.entry(winner_id).or_default().draws_against += 1;
     } else {
-        winner_stats.losses += 1;
-        winner_stats.matchups.entry(winner_id).or_default().losses_against += 1;
+        winner_stats.wins += 1;
+        winner_stats.matchups.entry(winner_id).or_default().wins_against += 1;
     }
 
     let loser_stats = stats.player_stats.entry(loser_id).or_insert_with(PlayerStats::default);
@@ -437,10 +437,10 @@ fn update_stats(game: &Puissance4) {
     loser_stats.total_turns += game.number_of_turns as u64;
     if was_draw {
         loser_stats.draws += 1;
-        loser_stats.matchups.entry(winner_id).or_default().draws_against += 1;
+        loser_stats.matchups.entry(loser_id).or_default().draws_against += 1;
     } else {
         loser_stats.losses += 1;
-        loser_stats.matchups.entry(winner_id).or_default().losses_against += 1;
+        loser_stats.matchups.entry(loser_id).or_default().losses_against += 1;
     }
 
     fs::write(LEADERBOARD_FILENAME, ron::to_string(&stats).unwrap()).unwrap();
@@ -448,7 +448,7 @@ fn update_stats(game: &Puissance4) {
 
 pub async fn get_leaderbaord(ctx: &Context) -> impl FnOnce(&mut CreateEmbed) -> &mut CreateEmbed {
     let stats_raw = fs::read_to_string(LEADERBOARD_FILENAME).unwrap();
-    let stats: Puissance4Stats = ron::from_str(&stats_raw).unwrap();
+    let stats: Puissance4Stats = ron::from_str(&stats_raw).unwrap_or_default();
     let mut fields = Vec::new();
 
     let mut leaderboard = stats.player_stats.iter().collect::<Vec<_>>();
