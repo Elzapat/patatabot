@@ -1,6 +1,7 @@
 .env
 *__pycache__
 secretsanta.json
+assets/dames_sauvegardes/*
 images/mitsuki/*
 images/gaspard/*
 images/murphy/*

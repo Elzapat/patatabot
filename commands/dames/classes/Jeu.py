@@ -37,7 +37,7 @@ class Jeu:
         self.__joueur1 = "joueur 1"
         self.__joueur2 = "joueur 2"
 
-        self.__savesDir = "dames_files/sauvegardes"
+        self.__savesDir = "assets/dames_sauvegardes"
 
         self.__strDep1 = "Pion *à déplacer* de **joueur X**  :\n*exit pour arrêter la partie*"
         self.__strDep2 = "case(s) de *destination* de **joueur X** :\n*exit pour arrêter la partie*"
