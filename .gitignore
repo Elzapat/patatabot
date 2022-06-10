@@ -1,3 +1,7 @@
 .env
 *__pycache__
 secretsanta.json
+images/mitsuki/*
+images/gaspard/*
+images/murphy/*
+images/catfaceplant/*

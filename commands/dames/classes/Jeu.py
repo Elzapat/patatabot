@@ -4,7 +4,7 @@
 from asyncore import loop
 from types import coroutine
 from unittest import result
-from classes.Plateau import Plateau
+from commands.dames.classes.Plateau import Plateau
 from datetime import datetime
 from os import listdir,rename
 import asyncio
