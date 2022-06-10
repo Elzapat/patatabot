@@ -150,7 +150,7 @@ async def boggle(ctx):
             await reponse.delete()
             break
 
-        if reponse.content != '' && reponse.content[0] == '!':
+        if reponse.content != '' and reponse.content[0] == '!':
             mot = reponse.content[1:].upper()
             await reponse.delete()
 
