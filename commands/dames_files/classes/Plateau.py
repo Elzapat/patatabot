@@ -22,12 +22,12 @@ class Plateau:
 
     def __initCases__(self) -> list[Case]:
         cases = []
-        case_claire = True 
+        caseClaire = True 
         for ligne in self.__lignes:
             for col in range(1,11):
-                cases.append(Case(ligne,col,case_claire))
-                case_claire = not case_claire
-            case_claire = not case_claire
+                cases.append(Case(ligne,col,caseClaire))
+                caseClaire = not caseClaire
+            caseClaire = not caseClaire
         return cases
 
     def __initPions__(self):
@@ -88,15 +88,15 @@ class Plateau:
 
     def affiche(self) -> str:
         txt = str()
-        nb_cases = 0
+        nbCases = 0
         txt += "```"
         txt += "  1 2 3 4 5 6 7 8 9 10\n"
         for case in self.__cases:
-            nb_cases+=1
-            if ((nb_cases-1)%10) == 0:
-                txt += f"{self.__lignes[(int)(nb_cases/10)]}"
+            nbCases+=1
+            if ((nbCases-1)%10) == 0:
+                txt += f"{self.__lignes[(int)(nbCases/10)]}"
             txt += f"{case.affiche()}"
-            if (nb_cases%10) == 0:
+            if (nbCases%10) == 0:
                 txt += "\n"
         txt += self.affichePionsRestants()
         txt += "```"
@@ -104,11 +104,11 @@ class Plateau:
     
     def sauvegarde(self) -> str:
         lignes = ""
-        nb_cases = 0
+        nbCases = 0
         for case in self.__cases:
-            nb_cases+=1
+            nbCases+=1
             lignes += case.affiche(sauvegarde=True)
-            if (nb_cases%10) == 0:
+            if (nbCases%10) == 0:
                 lignes += "\n"
         return lignes
 
@@ -155,7 +155,7 @@ class Plateau:
         return self.__cases[self.getCaseId(coords)]
 
 
-    def PionAuJoueur(self,coords : str, joueur : int) -> bool:
+    def pionAuJoueur(self,coords : str, joueur : int) -> bool:
         case = self.getCase(coords)
         if case != False :
             return case.estAuJoueur(joueur)
@@ -167,15 +167,15 @@ class Plateau:
         indexV2 = case2.getPosY()
         indexH1 = self.__lignes.find(case1.getPosX())
         indexH2 = self.__lignes.find(case2.getPosX())
-        nb_cases = abs(indexV1 - indexV2)
-        if abs(indexH1-indexH2) != nb_cases:
+        nbCases = abs(indexV1 - indexV2)
+        if abs(indexH1-indexH2) != nbCases:
             # print("Le déplacement n'est pas en diagonale")
             return []
         # on génère les coordonnées des cases à récup
         sensH = indexH2 > indexH1
         sensV = case2.getPosY() > case1.getPosY()
         coords = []
-        for i in range(0,nb_cases+1):
+        for i in range(0,nbCases+1):
             coord = ""
             if sensH:
                 coord = f"{self.__lignes[indexH1+i]}"
@@ -255,12 +255,12 @@ class Plateau:
                     return 1 , "Déplacement d'une case."
         return 0 , "ERREUR INTERNE : deplacementValide() n'a pas déterminé la possibilité de se déplacer."
 
-    def boutDuPlateau(self,joueur: int, case_id: int) -> bool:
+    def boutDuPlateau(self,joueur: int, caseId: int) -> bool:
         if joueur == 1:
-            if self.__cases[case_id].getPosX() == 'A':
+            if self.__cases[caseId].getPosX() == 'A':
                 return True
         if joueur == 2:
-            if self.__cases[case_id].getPosX() == 'J':
+            if self.__cases[caseId].getPosX() == 'J':
                 return True
         return 0
 

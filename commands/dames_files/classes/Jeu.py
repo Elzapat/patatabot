@@ -15,16 +15,16 @@ import nest_asyncio
 class Jeu:
     """classe Jeu"""
 
-    def __init__(self,fx_affiche,fx_prompt,msg_context = None, bot_context = None):
+    def __init__(self,fxAffiche,fxPrompt,msgContext = None, botContext = None):
         """initialisations :"""
-        self.__msg_context = None
-        self.__bot_context = None
-        if msg_context != None and bot_context != None:
+        self.__msgContext = None
+        self.__botContext = None
+        if msgContext != None and botContext != None:
             nest_asyncio.apply()
-            self.__msg_context = msg_context
-            self.__bot_context = bot_context
-        self.__affiche_externe = fx_affiche
-        self.__prompt_externe = fx_prompt
+            self.__msgContext = msgContext
+            self.__botContext = botContext
+        self.__afficheExterne = fxAffiche
+        self.__promptExterne = fxPrompt
 
         self.__nbTours = 0
         self.__nbToursSansMange = 0
@@ -49,21 +49,21 @@ class Jeu:
         self.__plateau = None
 
     def affiche(self,msg):
-        if self.__msg_context != None:
+        if self.__msgContext != None:
             loop = asyncio.get_event_loop()
-            coroutine  = self.__affiche_externe(msg,self.__msg_context)
+            coroutine  = self.__afficheExterne(msg,self.__msgContext)
             loop.run_until_complete(coroutine)
         else:
-            self.__affiche_externe(msg)
+            self.__afficheExterne(msg)
 
     def prompt(self,joueur : str = False):
         valueReceived = ""
-        if self.__bot_context != None:
+        if self.__botContext != None:
             loop = asyncio.get_event_loop()
-            coroutine  = self.__prompt_externe(self.__bot_context,joueur)
+            coroutine  = self.__promptExterne(self.__botContext,joueur)
             valueReceived = loop.run_until_complete(coroutine)
         else:
-            valueReceived = self.__prompt_externe(joueur)
+            valueReceived = self.__promptExterne(joueur)
         if valueReceived.lower().find(self.__motCleExitGame) != -1:
             return self.__flagExitGame
         return valueReceived
@@ -127,14 +127,14 @@ class Jeu:
 
     def choixChargement(self) -> str:
         listSaves = listdir(self.__savesDir)
-        a_print = ""
+        aPrint = ""
         choix = 0
         while choix == 0:
             index = 0
             for saveName in listSaves:
                 if saveName.find("Fini :") == 0:
                     listSaves.remove(saveName)
-            a_print += "Liste des sauvegardes:\n```"
+            aPrint += "Liste des sauvegardes:\n```"
             for saveName in listSaves:
                 with open(f"{self.__savesDir}/{saveName}","r") as saveFic:
                     parametres = dict()
@@ -143,12 +143,12 @@ class Jeu:
                         line = saveFic.readline()
                         key, value = line.partition("=")[::2]
                         parametres[key.strip()] = value.strip()
-                    a_print += "{0}:\t{1} contre {2} enregistrée {3}à {4}\n".format(index+1,parametres['joueur1'],parametres['joueur2'],"automatiquement " if parametres['typeSauvegarde'] == "auto" else "", parametres['datetime'])
+                    aPrint += "{0}:\t{1} contre {2} enregistrée {3}à {4}\n".format(index+1,parametres['joueur1'],parametres['joueur2'],"automatiquement " if parametres['typeSauvegarde'] == "auto" else "", parametres['datetime'])
                     index +=1
                 # self.affiche("\n")
-            a_print += f"```Total : {index} sauvegardes\n"
-            a_print += f"Choissez une sauvegarde :\n"
-            self.affiche(a_print)
+            aPrint += f"```Total : {index} sauvegardes\n"
+            aPrint += f"Choissez une sauvegarde :\n"
+            self.affiche(aPrint)
             choix = self.prompt()
             choix = int(choix)
             print(f"choix n°{choix} de partie faite : chargement de {listSaves[choix-1]} ")
@@ -222,12 +222,12 @@ class Jeu:
         depart = str()
         arrivee = str()
         listDplcmt = list()
-        deplacement_valide = 0 # false = 0
-        while deplacement_valide == 0:
+        deplacementValide = 0 # false = 0
+        while deplacementValide == 0:
             listDplcmt = []
 
-            pion_valide = False
-            while pion_valide == False:
+            pionValide = False
+            while pionValide == False:
                 msgs = f"{self.__plateau.affiche()}\n" + msgs
                 msgs += f"au tour de {self.__nomJoueur__(self.__joueurCourant)} le joueur {self.__joueurCourant}\n"
                 # départ de tel pion
@@ -240,8 +240,8 @@ class Jeu:
                 if depart == self.__flagExitGame:
                     return 0, depart
 
-                pion_valide = self.__plateau.PionAuJoueur(depart,self.__joueurCourant)
-                if not pion_valide :
+                pionValide = self.__plateau.pionAuJoueur(depart,self.__joueurCourant)
+                if not pionValide :
                     msgs += f"La case {depart.upper()} ne contient pas un pion !\n"
             # récupération, sélection du pion et affichage
             pion = self.__plateau.getCase(depart).getPion()
@@ -267,11 +267,11 @@ class Jeu:
 
 
             for i in range (0,len(listDplcmt)-1):
-                deplacement_valide, msg = self.__plateau.deplacementValide([listDplcmt[i],listDplcmt[i+1]],self.__joueurCourant, pion)
+                deplacementValide, msg = self.__plateau.deplacementValide([listDplcmt[i],listDplcmt[i+1]],self.__joueurCourant, pion)
                 msgs += f"{msg}\n"
-                if deplacement_valide == 1 and len(listDplcmt) > 2:
+                if deplacementValide == 1 and len(listDplcmt) > 2:
                     msgs += "Rafle autorisée qu'en mangeant plusieurs pions à la chaîne.\n"
-                    deplacement_valide = 0
+                    deplacementValide = 0
                     break
             # on le déselectionne (avant de le déplacer ou en cas de mauvaise coordonnée)
             self.__plateau.getCase(listDplcmt[0]).getPion().setSelect(False)
