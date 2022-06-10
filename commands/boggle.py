@@ -141,7 +141,7 @@ async def boggle(ctx):
 
         await message.edit(content=(texte + '\n' +
                            str(int(temps - time.time() + deb)) +
-                           ' secondes restantes\n\tPropose un mot avec `!`\n\tTape /stop pour quitter\n' +
+                           ' secondes restantes (tape /stop pour quitter)\n' +
                            liste_mots))
 
         reponse = await bot.wait_for("message")
@@ -150,12 +150,11 @@ async def boggle(ctx):
             await reponse.delete()
             break
 
-        if reponse.content[0] == '!':
-            mot = reponse.content[1:].upper()
-            await reponse.delete()
+        mot = reponse.content.upper()
+        await reponse.delete()
 
-            if mot in mots:
-                mots_trouves.append(mot)
+        if mot in mots:
+            mots_trouves.append(mot)
 
     texte += '\nScore : %s%%\n' % (int(len(mots_trouves)/len(mots)*10000)/100)
 
