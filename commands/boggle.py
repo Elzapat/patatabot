@@ -107,7 +107,10 @@ def motsgrille(gr):
 
 @bot.command(name="boggle")
 async def boggle(ctx):
-    texte = '%s joue au Boggle mes frères, encouragez-le !\n```\n' % ctx.author.nick
+    try:
+        texte = '%s joue au Boggle mes frères, encouragez-le !\n```\n' % ctx.author.nick
+    except:
+        texte = '%s joue au Boggle mes frères, encouragez-le !\n```\n' % ctx.author.name
     temps = 180.0
     gr = grille(4)
     sep = '+'
@@ -150,8 +153,12 @@ async def boggle(ctx):
             await reponse.delete()
             break
 
-        if reponse.content != '' && reponse.content[0] == '!':
-            mot = reponse.content[1:].upper()
+        if '!' in reponse.content:
+            mot = ''
+            for lettre in reponse.content.upper():
+                if lettre not in '! .':
+                    mot += lettre
+
             await reponse.delete()
 
             if mot in mots:
