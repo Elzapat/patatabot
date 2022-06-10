@@ -150,8 +150,12 @@ async def boggle(ctx):
             await reponse.delete()
             break
 
-        if reponse.content != '' && reponse.content[0] == '!':
-            mot = reponse.content[1:].upper()
+        if '!' in reponse.content:
+            mot = ''
+            for lettre in reponse.content.upper():
+                if lettre not in '! .':
+                    mot += lettre
+
             await reponse.delete()
 
             if mot in mots:
