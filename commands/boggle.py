@@ -107,7 +107,10 @@ def motsgrille(gr):
 
 @bot.command(name="boggle")
 async def boggle(ctx):
-    texte = '%s joue au Boggle mes frères, encouragez-le !\n```\n' % ctx.author.nick
+    try:
+        texte = '%s joue au Boggle mes frères, encouragez-le !\n```\n' % ctx.author.nick
+    except:
+        texte = '%s joue au Boggle mes frères, encouragez-le !\n```\n' % ctx.author.name
     temps = 180.0
     gr = grille(4)
     sep = '+'
