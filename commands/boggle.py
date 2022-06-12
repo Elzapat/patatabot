@@ -111,6 +111,7 @@ async def boggle(ctx):
         texte = '%s joue au Boggle mes frères, encouragez-le !\n```\n' % ctx.author.nick
     except:
         texte = '%s joue au Boggle mes frères, encouragez-le !\n```\n' % ctx.author.name
+
     temps = 180.0
     gr = grille(4)
     sep = '+'
@@ -161,7 +162,7 @@ async def boggle(ctx):
 
             await reponse.delete()
 
-            if mot in mots:
+            if mot in mots and mot not in mots_trouves:
                 mots_trouves.append(mot)
 
     texte += '\nScore : %s%%\n' % (int(len(mots_trouves)/len(mots)*10000)/100)
