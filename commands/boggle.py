@@ -107,10 +107,17 @@ def motsgrille(gr):
 
 @bot.command(name="boggle")
 async def boggle(ctx):
+
+    def est_commande(msg):
+        return '!' in msg.content
+
     try:
-        texte = '%s joue au Boggle mes frères, encouragez-le !\n```\n' % ctx.author.nick
+        if ctx.author.nick is not None:
+            texte = '%s joue au Boggle mes frères, encouragez-le !\n```\n' % ctx.author.nick
+        else:
+            texte = '%s joue au Boggle mes frères, encouragez-le !\n```\n' % ctx.author.name
     except:
-        texte = '%s joue au Boggle mes frères, encouragez-le !\n```\n' % ctx.author.name
+        texte = 'Jeu de Boggle :\n```\n'
 
     temps = 180.0
     gr = grille(4)
@@ -145,25 +152,24 @@ async def boggle(ctx):
 
         await message.edit(content=(texte + '\n' +
                            str(int(temps - time.time() + deb)) +
-                           ' secondes restantes\n\tPropose un mot avec `!`\n\tTape `stop` pour quitter\n' +
+                           ' secondes restantes\n\tPropose un mot avec `!`\n\tTape `!!stop` pour quitter\n' +
                            liste_mots))
 
-        reponse = await bot.wait_for("message")
+        reponse = await bot.wait_for("message", check=est_commande, timeout=180.0)
 
-        if reponse.content == "stop":
+        if reponse.content == "!!stop":
             await reponse.delete()
             break
 
-        if '!' in reponse.content:
-            mot = ''
-            for lettre in reponse.content.upper():
-                if lettre not in '! .':
-                    mot += lettre
+        mot = ''
+        for lettre in reponse.content.upper():
+            if lettre not in '! .':
+                mot += lettre
 
-            await reponse.delete()
+        await reponse.delete()
 
-            if mot in mots and mot not in mots_trouves:
-                mots_trouves.append(mot)
+        if mot in mots and mot not in mots_trouves:
+            mots_trouves.append(mot)
 
     texte += '\nScore : %s%%\n' % (int(len(mots_trouves)/len(mots)*10000)/100)
 
