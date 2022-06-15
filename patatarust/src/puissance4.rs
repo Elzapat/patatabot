@@ -25,38 +25,30 @@ pub const LETTER_EMOJIS: [char; 26] = [
     '🇽', '🇾', '🇿',
 ];
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 struct Puissance4Stats {
     average_turns: f32,
+    games_played: u32,
+    total_turns: u64,
     player_stats: HashMap<UserId, PlayerStats>,
 }
 
-impl Default for Puissance4Stats {
-    fn default() -> Self {
-        Puissance4Stats {
-            average_turns: 0.0,
-            player_stats: HashMap::new(),
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 struct PlayerStats {
     wins: u32,
     losses: u32,
+    draws: u32,
+    games_played: u32,
+    total_turns: u64,
     average_turns: f32,
-    matchups: HashMap<UserId, u32>,
+    matchups: HashMap<UserId, MatchupStats>,
 }
 
-impl Default for PlayerStats {
-    fn default() -> Self {
-        PlayerStats {
-            wins: 0,
-            losses: 0,
-            average_turns: 0.0,
-            matchups: HashMap::new(),
-        }
-    }
+#[derive(Serialize, Deserialize, Debug, Default)]
+struct MatchupStats {
+    wins_against: u32,
+    losses_against: u32,
+    draws_against: u32,
 }
 
 // Struct representing a position on the grid
@@ -93,7 +85,7 @@ pub struct Puissance4 {
 }
 
 // State of the Puissance 4 game
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Puissance4State {
     NotStarted,
     Started,
@@ -411,6 +403,7 @@ fn get_grid(game: &Puissance4) -> String {
 fn update_stats(game: &Puissance4) {
     let winner_id = game.players[game.playing].member.user.id;
     let loser_id = game.players[if game.playing == 1 { 0 } else { 1 }].member.user.id;
+    let was_draw = game.state == Puissance4State::Finished { draw: true };
 
     let stats_raw = fs::read_to_string(LEADERBOARD_FILENAME).unwrap();
     let mut stats: Puissance4Stats = match ron::from_str(&stats_raw) {
@@ -422,16 +415,33 @@ fn update_stats(game: &Puissance4) {
     };
 
     stats.average_turns = (stats.average_turns + game.number_of_turns as f32) / 2.0;
+    stats.total_turns += game.number_of_turns as u64;
+    stats.games_played += 1;
 
     let winner_stats = stats.player_stats.entry(winner_id).or_insert_with(PlayerStats::default);
-    winner_stats.wins += 1;
+    winner_stats.games_played += 1;
     winner_stats.average_turns = (winner_stats.average_turns + game.number_of_turns as f32) / 2.0;
-    *winner_stats.matchups.entry(loser_id).or_insert(0) += 1;
+    winner_stats.total_turns += game.number_of_turns as u64;
+    winner_stats.matchups.entry(loser_id).or_default().wins_against += 1;
+    if was_draw {
+        winner_stats.draws += 1;
+        winner_stats.matchups.entry(winner_id).or_default().draws_against += 1;
+    } else {
+        winner_stats.wins += 1;
+        winner_stats.matchups.entry(winner_id).or_default().wins_against += 1;
+    }
 
     let loser_stats = stats.player_stats.entry(loser_id).or_insert_with(PlayerStats::default);
-    loser_stats.losses += 1;
+    loser_stats.games_played += 1;
     loser_stats.average_turns = (loser_stats.average_turns + game.number_of_turns as f32) / 2.0;
-    *loser_stats.matchups.entry(winner_id).or_insert(0) += 1;
+    loser_stats.total_turns += game.number_of_turns as u64;
+    if was_draw {
+        loser_stats.draws += 1;
+        loser_stats.matchups.entry(loser_id).or_default().draws_against += 1;
+    } else {
+        loser_stats.losses += 1;
+        loser_stats.matchups.entry(loser_id).or_default().losses_against += 1;
+    }
 
     fs::write(LEADERBOARD_FILENAME, ron::to_string(&stats).unwrap()).unwrap();
 }
@@ -459,10 +469,10 @@ pub async fn get_leaderbaord(ctx: &Context) -> impl FnOnce(&mut CreateEmbed) -> 
                 user.name,
             ),
             format!(
-                "`Victoires : {:<4}  Défaites : {:<4} Ratio V/D : {:.2}`",
+                "`Victoires : {:<4}  Défaites : {:<4} Taux de victoire : {:.2}%`",
                 stats.wins,
                 stats.losses,
-                stats.wins as f32 / stats.losses as f32
+                (stats.wins as f32 / stats.games_played as f32) * 100.0,
             ),
             false,
         ));

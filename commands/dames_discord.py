@@ -1,5 +1,5 @@
 from config import bot
-from dames_files.classes.Jeu import Jeu
+from commands.dames.classes.Jeu import Jeu
 
 import asyncio
 import nest_asyncio

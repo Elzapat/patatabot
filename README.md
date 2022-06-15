@@ -5,3 +5,4 @@
 * `python-dotenv`
 * `dataparser`
 * `requests`
+* `nest-asyncio`
