@@ -9,21 +9,21 @@ async def affiche(msg,messageAEdit):
     await messageAEdit.edit(content=msg)
 
 async def prompt(ctx,joueur : str = False):
-    channelBon = False
+    bonChannel = False
     bonJoueur = False
-    while (not channelBon) or (not bonJoueur) :
-        channelBon = False
+    while (not bonChannel) or (not bonJoueur) :
+        bonChannel = False
         bonJoueur = False        
         loop = asyncio.get_event_loop()
         coroutine  = bot.wait_for("message")
         msgDiscord = loop.run_until_complete(coroutine)
-        channelBon = msgDiscord.channel == ctx.channel
-        # if  joueur :
-            # bonJoueur = msgDiscord.author.display_name == joueur
-        # else:
-        bonJoueur = msgDiscord.author.display_name != ctx.me.display_name
+        bonChannel = msgDiscord.channel == ctx.channel
+        if  joueur :
+            bonJoueur = msgDiscord.author.display_name == joueur
+        else:
+            bonJoueur = msgDiscord.author.display_name != ctx.me.display_name
         
-        if channelBon and bonJoueur:
+        if bonChannel and bonJoueur:
             msg = msgDiscord.content.strip()
             await msgDiscord.delete()
             return msg
@@ -32,17 +32,17 @@ async def prompt(ctx,joueur : str = False):
     print("ERREUR INTERNE : dans prompt")
 
 async def identification(ctx) -> str:
-    channelBon = False
+    bonChannel = False
     bonJoueur = False
-    while (not channelBon) or (not bonJoueur) :
-        channelBon = False
+    while (not bonChannel) or (not bonJoueur) :
+        bonChannel = False
         bonJoueur = False        
         loop = asyncio.get_event_loop()
         coroutine  = bot.wait_for("message")
         msgDiscord = loop.run_until_complete(coroutine)
-        channelBon = msgDiscord.channel == ctx.channel
+        bonChannel = msgDiscord.channel == ctx.channel
         bonJoueur = msgDiscord.author.display_name != ctx.me.display_name
-        if channelBon and bonJoueur:
+        if bonChannel and bonJoueur:
             joueur = msgDiscord.author.display_name
             print(f"joueur {joueur} qui a envoyé \"{msgDiscord.content}\"")
             await msgDiscord.delete()
@@ -54,11 +54,11 @@ async def dames(ctx, Arg = None):
     msgAccueil = f"""
         **Jeu des dames** version **bêta**
         **Mode débug :** ```
-         - n'importe qui peut jouer à la place du joueur concerné
          - les réactions ne sont pas implémentées : tout ce passe par message envoyé dans ce channel
          - Mais une partie peut (normalement) être débutée, stoppée, reprise et finie !```
         **Liste des bugs:**```
          - S'il vous reste plus qu'un pion et qu'il ne peut pas bouger : la partie est bloquée```
+         - On peut `/dames load` une partie finie, ce qui ne doit pas être le cas
         *Si vous constatez des bugs: allez raler auprès d'Alexis*
         """
     messageAEdit = await ctx.channel.send(msgAccueil)
