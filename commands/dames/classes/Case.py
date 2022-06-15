@@ -1,4 +1,4 @@
-from classes.Pion import Pion
+from commands.dames.classes.Pion import Pion
 
 class Case:
     """classe Case"""

@@ -1,8 +1,8 @@
 from fileinput import filename
 from time import sleep
 from typing import Tuple
-from classes.Pion import Pion
-from classes.Case import Case
+from commands.dames.classes.Pion import Pion
+from commands.dames.classes.Case import Case
 
 class Plateau:
     """classe Plateau"""
