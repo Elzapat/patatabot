@@ -455,7 +455,7 @@ pub async fn get_leaderbaord(ctx: &Context) -> impl FnOnce(&mut CreateEmbed) -> 
     leaderboard.sort_by(|(_, stats1), (_, stats2)| stats2.wins.cmp(&stats1.wins));
 
     for (rank, (user_id, stats)) in leaderboard.iter().enumerate() {
-        if rank > 10 {
+        if rank > 5 {
             break;
         }
 
