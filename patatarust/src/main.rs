@@ -50,13 +50,10 @@ impl EventHandler for Handler {
                     Err(e) => e,
                 },
                 "puissance4-classement" => {
+                    command.defer(&ctx.http).await.unwrap();
                     let embed_builder = get_leaderbaord(&ctx).await;
                     command
-                        .create_interaction_response(&ctx.http, |response| {
-                            response
-                                .kind(InteractionResponseType::ChannelMessageWithSource)
-                                .interaction_response_data(|message| message.embed(embed_builder))
-                        })
+                        .create_followup_message(&ctx.http, |response| response.embed(embed_builder))
                         .await
                         .unwrap();
 

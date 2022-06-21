@@ -452,10 +452,14 @@ pub async fn get_leaderbaord(ctx: &Context) -> impl FnOnce(&mut CreateEmbed) -> 
     let mut fields = Vec::new();
 
     let mut leaderboard = stats.player_stats.iter().collect::<Vec<_>>();
-    leaderboard.sort_by(|(_, stats1), (_, stats2)| stats2.wins.cmp(&stats1.wins));
+    leaderboard.sort_by(|(_, stats1), (_, stats2)| {
+        let p1_wr = (stats1.wins as f32) / (stats1.games_played as f32);
+        let p2_wr = (stats2.wins as f32) / (stats2.games_played as f32);
+        p2_wr.partial_cmp(&p1_wr).unwrap()
+    });
 
     for (rank, (user_id, stats)) in leaderboard.iter().enumerate() {
-        if rank > 5 {
+        if rank > 10 {
             break;
         }
 
@@ -469,10 +473,12 @@ pub async fn get_leaderbaord(ctx: &Context) -> impl FnOnce(&mut CreateEmbed) -> 
                 user.name,
             ),
             format!(
-                "`Victoires : {:<4}  Défaites : {:<4} Taux de victoire : {:.2}%`",
+                "```Victoires : {:<width$} Défaites         : {:<width$}\nÉgalités  : {:<width$} Taux de victoire : {:.2}%```",
                 stats.wins,
                 stats.losses,
+                stats.draws,
                 (stats.wins as f32 / stats.games_played as f32) * 100.0,
+                width = 3,
             ),
             false,
         ));
@@ -482,7 +488,10 @@ pub async fn get_leaderbaord(ctx: &Context) -> impl FnOnce(&mut CreateEmbed) -> 
 
     move |mut embed| {
         if let Some(icon) = icon {
-            embed = embed.author(|a| a.icon_url(icon).name("Classement Puissance 4"));
+            embed = embed.author(|a| {
+                a.icon_url(icon)
+                    .name("Classement Puissance 4 (trié par taux de victoire)")
+            });
         }
 
         embed
