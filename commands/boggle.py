@@ -129,7 +129,7 @@ async def boggle(ctx):
     gr = grille(4)
     sep = '+'
 
-    message = await ctx.get_channel().send(texte)
+    message = await ctx.channel.send(texte)
 
     for i in range(4):
         sep += '---+'
