@@ -1,7 +1,7 @@
+pub mod stats;
+
 use crate::Puissance4Game;
-use serde::{Deserialize, Serialize};
 use serenity::{
-    builder::CreateEmbed,
     model::{
         application::interaction::application_command::{ApplicationCommandInteraction, CommandDataOptionValue},
         channel::{Message, Reaction, ReactionType},
@@ -10,46 +10,20 @@ use serenity::{
     },
     prelude::*,
 };
-use std::{collections::HashMap, default::Default, error::Error, fs, sync::Arc};
+use stats::update_stats;
+use std::{collections::HashMap, error::Error, sync::Arc};
 use tokio::sync::RwLock;
 
 // Size of Puissance 4 grid
-pub const LEADERBOARD_FILENAME: &str = "puissance4_stats.ron";
-pub const PATATE_GUILD_ID: GuildId = GuildId(675349992130478080);
 pub const GRID_WIDTH: i8 = 7;
 pub const GRID_HEIGHT: i8 = 6;
 pub const VALIDATE: char = '✅';
 pub const CANCEL: char = '❌';
+pub const SURRENDER: &str = "🏳️";
 pub const LETTER_EMOJIS: [char; 26] = [
     '🇦', '🇧', '🇨', '🇩', '🇪', '🇫', '🇬', '🇭', '🇮', '🇯', '🇰', '🇱', '🇲', '🇳', '🇴', '🇵', '🇶', '🇷', '🇸', '🇹', '🇺', '🇻', '🇼',
     '🇽', '🇾', '🇿',
 ];
-
-#[derive(Serialize, Deserialize, Debug, Default)]
-struct Puissance4Stats {
-    average_turns: f32,
-    games_played: u32,
-    total_turns: u64,
-    player_stats: HashMap<UserId, PlayerStats>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Default)]
-struct PlayerStats {
-    wins: u32,
-    losses: u32,
-    draws: u32,
-    games_played: u32,
-    total_turns: u64,
-    average_turns: f32,
-    matchups: HashMap<UserId, MatchupStats>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Default)]
-struct MatchupStats {
-    wins_against: u32,
-    losses_against: u32,
-    draws_against: u32,
-}
 
 // Struct representing a position on the grid
 #[derive(Hash, Debug, Eq, PartialEq, Copy, Clone)]
@@ -89,7 +63,7 @@ pub struct Puissance4 {
 pub enum Puissance4State {
     NotStarted,
     Started,
-    Finished { draw: bool },
+    Finished { draw: bool, surrender: bool },
 }
 
 pub type Puissance4GameData = Arc<RwLock<Vec<Puissance4>>>;
@@ -164,7 +138,7 @@ pub async fn setup_game(
             free_opponent: opponent.is_none(),
             message,
             number_players: 2,
-            playing: 0,
+            playing: rand::random::<bool>() as usize,
             state: Puissance4State::NotStarted,
             players: [
                 Player {
@@ -203,6 +177,7 @@ pub async fn reaction_added(ctx: Context, reaction: Reaction) -> Result<(), Box<
 
         if message.id != game.message.id {
             println!("Message id does not match");
+            idx += 1;
             continue;
         }
 
@@ -238,6 +213,10 @@ pub async fn reaction_added(ctx: Context, reaction: Reaction) -> Result<(), Box<
                             .react(&ctx.http, ReactionType::Unicode(emoji.to_string()))
                             .await?;
                     }
+
+                    message
+                        .react(&ctx.http, ReactionType::Unicode(SURRENDER.to_string()))
+                        .await?;
                 } else if check_game_cancel(&reaction, &game.players) {
                     games.remove(idx);
                     message.edit(&ctx.http, |m| m.content("Partie refusée.")).await?;
@@ -246,16 +225,34 @@ pub async fn reaction_added(ctx: Context, reaction: Reaction) -> Result<(), Box<
                 }
             }
             Puissance4State::Started => {
-                if reaction.user_id.ok_or("No user in reaction")? == game.players[game.playing].member.user.id {
+                if check_game_surrender(&reaction, &game.players) {
+                    game.playing = if reaction.user_id.unwrap() == game.players[game.playing].member.user.id {
+                        if game.playing == 1 {
+                            0
+                        } else {
+                            1
+                        }
+                    } else {
+                        game.playing
+                    };
+
+                    game.state = Puissance4State::Finished {
+                        draw: false,
+                        surrender: true,
+                    };
+                    message.delete_reactions(&ctx.http).await?;
+                    message.edit(&ctx.http, |m| m.content(get_grid(game))).await?;
+                    update_stats(game);
+                } else if reaction.user_id.ok_or("No user in reaction")? == game.players[game.playing].member.user.id {
                     execute_turn(&ctx, &mut message, game, &reaction).await?;
                 } else {
                     println!("Reaction user id different from user id in game");
                 }
             }
-            Puissance4State::Finished { draw: _ } => println!("Game is finished"),
+            Puissance4State::Finished { .. } => println!("Game is finished"),
         }
 
-        if let Puissance4State::Finished { draw: _ } = game.state {
+        if let Puissance4State::Finished { .. } = game.state {
             games.remove(idx);
             continue;
         }
@@ -290,6 +287,7 @@ pub async fn execute_turn(
                 if check_finish(game, new_pawn_pos) {
                     game.state = Puissance4State::Finished {
                         draw: game.pawns.len() >= (GRID_WIDTH * GRID_HEIGHT) as usize,
+                        surrender: false,
                     };
                     message.delete_reactions(&ctx.http).await?;
                     update_stats(game);
@@ -338,6 +336,11 @@ fn check_game_cancel(reaction: &Reaction, players: &[Player; 2]) -> bool {
         && (reaction.user_id == Some(players[0].member.user.id) || reaction.user_id == Some(players[1].member.user.id))
 }
 
+fn check_game_surrender(reaction: &Reaction, players: &[Player; 2]) -> bool {
+    reaction.emoji == ReactionType::Unicode(SURRENDER.to_string())
+        && (reaction.user_id == Some(players[0].member.user.id) || reaction.user_id == Some(players[1].member.user.id))
+}
+
 fn get_grid(game: &Puissance4) -> String {
     let playing = &game.players[game.playing];
     let not_playing = &game.players[if game.playing == 1 { 0 } else { 1 }];
@@ -354,7 +357,7 @@ fn get_grid(game: &Puissance4) -> String {
                 playing.symbol,
             )
         }
-        Puissance4State::Finished { draw } => {
+        Puissance4State::Finished { draw, surrender } => {
             if draw {
                 format!(
                     "Égalité du match {} ({}) VS {} ({})\n\n",
@@ -365,11 +368,12 @@ fn get_grid(game: &Puissance4) -> String {
                 )
             } else {
                 format!(
-                    "{} ({}) a gagné contre {} ({})!\n\n",
+                    "{} ({}) a gagné contre {} ({}) ! {}\n\n",
                     playing.member.display_name(),
                     playing.symbol,
                     not_playing.member.display_name(),
                     not_playing.symbol,
+                    if surrender { "(Par abandon)" } else { "" },
                 )
             }
         }
@@ -398,105 +402,4 @@ fn get_grid(game: &Puissance4) -> String {
     }
 
     grid
-}
-
-fn update_stats(game: &Puissance4) {
-    let winner_id = game.players[game.playing].member.user.id;
-    let loser_id = game.players[if game.playing == 1 { 0 } else { 1 }].member.user.id;
-    let was_draw = game.state == Puissance4State::Finished { draw: true };
-
-    let stats_raw = fs::read_to_string(LEADERBOARD_FILENAME).unwrap();
-    let mut stats: Puissance4Stats = match ron::from_str(&stats_raw) {
-        Ok(stats) => stats,
-        Err(e) => {
-            eprintln!("Error reading stats file : {e:?}");
-            return;
-        }
-    };
-
-    stats.average_turns = (stats.average_turns + game.number_of_turns as f32) / 2.0;
-    stats.total_turns += game.number_of_turns as u64;
-    stats.games_played += 1;
-
-    let winner_stats = stats.player_stats.entry(winner_id).or_insert_with(PlayerStats::default);
-    winner_stats.games_played += 1;
-    winner_stats.average_turns = (winner_stats.average_turns + game.number_of_turns as f32) / 2.0;
-    winner_stats.total_turns += game.number_of_turns as u64;
-    winner_stats.matchups.entry(loser_id).or_default().wins_against += 1;
-    if was_draw {
-        winner_stats.draws += 1;
-        winner_stats.matchups.entry(winner_id).or_default().draws_against += 1;
-    } else {
-        winner_stats.wins += 1;
-        winner_stats.matchups.entry(winner_id).or_default().wins_against += 1;
-    }
-
-    let loser_stats = stats.player_stats.entry(loser_id).or_insert_with(PlayerStats::default);
-    loser_stats.games_played += 1;
-    loser_stats.average_turns = (loser_stats.average_turns + game.number_of_turns as f32) / 2.0;
-    loser_stats.total_turns += game.number_of_turns as u64;
-    if was_draw {
-        loser_stats.draws += 1;
-        loser_stats.matchups.entry(loser_id).or_default().draws_against += 1;
-    } else {
-        loser_stats.losses += 1;
-        loser_stats.matchups.entry(loser_id).or_default().losses_against += 1;
-    }
-
-    fs::write(LEADERBOARD_FILENAME, ron::to_string(&stats).unwrap()).unwrap();
-}
-
-pub async fn get_leaderbaord(ctx: &Context) -> impl FnOnce(&mut CreateEmbed) -> &mut CreateEmbed {
-    let stats_raw = fs::read_to_string(LEADERBOARD_FILENAME).unwrap();
-    let stats: Puissance4Stats = ron::from_str(&stats_raw).unwrap_or_default();
-    let mut fields = Vec::new();
-
-    let mut leaderboard = stats.player_stats.iter().collect::<Vec<_>>();
-    leaderboard.sort_by(|(_, stats1), (_, stats2)| {
-        let p1_wr = (stats1.wins as f32) / (stats1.games_played as f32);
-        let p2_wr = (stats2.wins as f32) / (stats2.games_played as f32);
-        p2_wr.partial_cmp(&p1_wr).unwrap()
-    });
-
-    for (rank, (user_id, stats)) in leaderboard.iter().enumerate() {
-        if rank > 10 {
-            break;
-        }
-
-        let user = user_id.to_user(&ctx.http).await.unwrap();
-
-        fields.push((
-            format!(
-                "#{} {} ({})",
-                rank + 1,
-                user.nick_in(&ctx.http, PATATE_GUILD_ID).await.unwrap(),
-                user.name,
-            ),
-            format!(
-                "```Victoires : {:<width$} Défaites         : {:<width$}\nÉgalités  : {:<width$} Taux de victoire : {:.2}%```",
-                stats.wins,
-                stats.losses,
-                stats.draws,
-                (stats.wins as f32 / stats.games_played as f32) * 100.0,
-                width = 3,
-            ),
-            false,
-        ));
-    }
-
-    let icon = PATATE_GUILD_ID.to_partial_guild(&ctx.http).await.unwrap().icon_url();
-
-    move |mut embed| {
-        if let Some(icon) = icon {
-            embed = embed.author(|a| {
-                a.icon_url(icon)
-                    .name("Classement Puissance 4 (trié par taux de victoire)")
-            });
-        }
-
-        embed
-            // .title("Classement par victoires")
-            .fields(fields)
-            .color(serenity::utils::Color::GOLD)
-    }
 }

@@ -1,33 +1,63 @@
 mod puissance4;
 
-use puissance4::{check_command_validity, get_leaderbaord, reaction_added, setup_game, Puissance4GameData};
+use puissance4::{check_command_validity, reaction_added, setup_game, stats::get_leaderbaord, Puissance4GameData};
 use serenity::{
     async_trait,
+    builder::CreateInteractionResponseData,
+    http::Http,
     model::{
         application::{
             command::{Command, CommandOptionType},
-            interaction::{Interaction, InteractionResponseType},
+            interaction::{application_command::ApplicationCommandInteraction, Interaction, InteractionResponseType},
         },
         channel::Reaction,
         gateway::Ready,
     },
     prelude::*,
 };
-use std::{env, sync::Arc};
+use std::{
+    env,
+    process::{Child, Command as StdCommand, Stdio},
+    sync::Arc,
+};
 use tokio::sync::RwLock;
 
 struct Puissance4Game;
-
 impl TypeMapKey for Puissance4Game {
     type Value = Puissance4GameData;
 }
 
+struct PythonBot;
+impl TypeMapKey for PythonBot {
+    type Value = Arc<RwLock<Child>>;
+}
+
 struct Handler;
+
+async fn respond_to_interaction<'a, F>(http: impl AsRef<Http>, command: ApplicationCommandInteraction, message: F)
+where
+    for<'b> F: FnOnce(&'b mut CreateInteractionResponseData<'a>) -> &'b mut CreateInteractionResponseData<'a>,
+{
+    if let Err(e) = command
+        .create_interaction_response(http, |response| {
+            response
+                .kind(InteractionResponseType::ChannelMessageWithSource)
+                .interaction_response_data(message)
+        })
+        .await
+    {
+        eprintln!("Error creating interaction response: {e:?}");
+    }
+}
 
 #[async_trait]
 impl EventHandler for Handler {
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
         if let Interaction::ApplicationCommand(command) = interaction {
+            // ctx.http
+            //     .delete_global_application_command(command.data.id.into())
+            //     .await
+            //     .unwrap();
             let content = match command.data.name.as_str() {
                 "puissance4" => match check_command_validity(&command) {
                     Ok(opponent) => {
@@ -52,6 +82,7 @@ impl EventHandler for Handler {
                 "puissance4-classement" => {
                     command.defer(&ctx.http).await.unwrap();
                     let embed_builder = get_leaderbaord(&ctx).await;
+
                     command
                         .create_followup_message(&ctx.http, |response| response.embed(embed_builder))
                         .await
@@ -59,21 +90,13 @@ impl EventHandler for Handler {
 
                     return;
                 }
+                "boggle" => return,
                 "dames" => "PAS ENCORE LÀ REVIENT PLUS TARD !!!".to_owned(),
-                _ => "not implemented".to_owned(),
+                "mitsuki" | "gaspard" => return,
+                _ => format!("{} not implemented", command.data.name),
             };
 
-            if let Err(e) = command
-                .create_interaction_response(&ctx.http, |response| {
-                    response
-                        .kind(InteractionResponseType::ChannelMessageWithSource)
-                        .interaction_response_data(|message| message.content(content).ephemeral(true))
-                })
-                .await
-            {
-                eprintln!("Cannot respond to slash command: {e:?}");
-                return;
-            }
+            respond_to_interaction(&ctx.http, command, |message| message.content(content).ephemeral(true)).await;
         }
     }
 
@@ -84,7 +107,7 @@ impl EventHandler for Handler {
     }
 
     async fn ready(&self, ctx: Context, ready: Ready) {
-        println!("{} is connected!", ready.user.name);
+        println!("{} is connected! (Rust)", ready.user.name);
 
         Command::create_global_application_command(&ctx.http, |command| {
             command
@@ -140,6 +163,14 @@ async fn main() {
     {
         let mut data = client.data.write().await;
         data.insert::<Puissance4Game>(Arc::new(RwLock::new(Vec::new())));
+        data.insert::<PythonBot>(Arc::new(RwLock::new(
+            StdCommand::new("python")
+                .arg("../main.py")
+                .stdin(Stdio::piped())
+                // .stdout(Stdio::piped())
+                .spawn()
+                .unwrap(),
+        )));
     }
 
     if let Err(e) = client.start().await {
