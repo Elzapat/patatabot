@@ -284,9 +284,10 @@ pub async fn execute_turn(
             if new_pawn_pos.y < GRID_HEIGHT {
                 game.pawns.insert(new_pawn_pos, game.players[game.playing].symbol);
 
-                if check_finish(game, new_pawn_pos) {
+                let (game_finished, is_draw) = check_finish(game, new_pawn_pos);
+                if game_finished {
                     game.state = Puissance4State::Finished {
-                        draw: game.pawns.len() >= (GRID_WIDTH * GRID_HEIGHT) as usize,
+                        draw: is_draw,
                         surrender: false,
                     };
                     message.delete_reactions(&ctx.http).await?;
@@ -303,22 +304,24 @@ pub async fn execute_turn(
     Ok(())
 }
 
-fn check_finish(game: &Puissance4, pos: Position) -> bool {
+fn check_finish(game: &Puissance4, pos: Position) -> (bool, bool) {
     let check_left = pos.x > 1;
     let check_right = pos.x < GRID_WIDTH - 2;
     let check_down = pos.y > 1;
     let check_up = pos.y < GRID_HEIGHT - 2;
     let symbol = &game.players[game.playing].symbol;
-
-    (check_left && check_side(game, |o| Position::new(pos.x - o, pos.y), symbol))
+    let draw = game.pawns.len() >= (GRID_WIDTH * GRID_HEIGHT) as usize;
+    let game_won = (check_left && check_side(game, |o| Position::new(pos.x - o, pos.y), symbol))
         || (check_right && check_side(game, |o| Position::new(pos.x + o, pos.y), symbol))
         || (check_up && check_side(game, |o| Position::new(pos.x, pos.y + o), symbol))
         || (check_down && check_side(game, |o| Position::new(pos.x, pos.y - o), symbol))
         || (check_left && check_up && check_side(game, |o| Position::new(pos.x - o, pos.y + o), symbol))
         || (check_up && check_right && check_side(game, |o| Position::new(pos.x + o, pos.y + o), symbol))
         || (check_right && check_down && check_side(game, |o| Position::new(pos.x + o, pos.y - o), symbol))
-        || (check_down && check_left && check_side(game, |o| Position::new(pos.x - o, pos.y - o), symbol))
-        || game.pawns.len() >= (GRID_WIDTH * GRID_HEIGHT) as usize
+        || (check_down && check_left && check_side(game, |o| Position::new(pos.x - o, pos.y - o), symbol));
+
+    // (if the game was finished (win or draw), if the game was a draw (nobody won))
+    (game_won || draw, draw && !game_won)
 }
 
 fn check_side<F: Fn(i8) -> Position>(game: &Puissance4, get_offset: F, symbol: &char) -> bool {
