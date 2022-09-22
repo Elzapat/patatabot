@@ -4,7 +4,7 @@ import interactions
 from config import bot, interactions_bot
 from discord import File
 
-@bot.command
+@bot.command()
 async def mitsuki(ctx):
     await ctx.channel.send(file=File("../images/mitsuki/" + random.choice(os.listdir("../images/mitsuki"))))
 

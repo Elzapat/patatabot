@@ -9,7 +9,7 @@ async def on_ready():
 @bot.event
 async def on_message(message):
     # message.content = "/boggle"
-    # print(message.content)
+    print(message)
     
     await bot.process_commands(message)
 

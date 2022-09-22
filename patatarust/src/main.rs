@@ -54,10 +54,20 @@ where
 impl EventHandler for Handler {
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
         if let Interaction::ApplicationCommand(command) = interaction {
-            // ctx.http
-            //     .delete_global_application_command(command.data.id.into())
-            //     .await
-            //     .unwrap();
+            /*
+            ctx.http
+                 .delete_global_application_command(command.data.id.into())
+                 .await
+                 .unwrap();
+            ctx.http
+                 .delete_guild_application_command(675349992130478080, command.data.id.into())
+                 .await
+                 .unwrap();
+            ctx.http
+                 .delete_guild_application_command(669507869791748117, command.data.id.into())
+                 .await
+                 .unwrap();
+            */
             let content = match command.data.name.as_str() {
                 "puissance4" => match check_command_validity(&command) {
                     Ok(opponent) => {
@@ -124,6 +134,7 @@ impl EventHandler for Handler {
         .await
         .unwrap();
 
+        /*
         Command::create_global_application_command(&ctx.http, |command| {
             command
                 .name("dames")
@@ -138,6 +149,7 @@ impl EventHandler for Handler {
         })
         .await
         .unwrap();
+        */
 
         Command::create_global_application_command(&ctx.http, |command| {
             command
@@ -155,7 +167,11 @@ async fn main() {
 
     let token = env::var("DISCORD_TOKEN").expect("Expected DISCORD_TOKEN in env");
 
-    let mut client = Client::builder(token, GatewayIntents::GUILD_MESSAGE_REACTIONS)
+    let intents = GatewayIntents::GUILD_MESSAGES
+        | GatewayIntents::MESSAGE_CONTENT
+        | GatewayIntents::GUILD_MESSAGE_REACTIONS;
+
+    let mut client = Client::builder(token, intents)
         .event_handler(Handler)
         .await
         .expect("Error creating client");
