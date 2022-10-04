@@ -1,9 +1,8 @@
+from random import randint
 import time
 import sys
-import interactions
 
-from random import randint
-from config import bot, interactions_bot
+from config import bot
 
 path = "assets/dictionnaire.txt"
 
@@ -11,11 +10,9 @@ motsfrancais = []
 file = open(path, 'r')
 
 for ligne in file:
-    motsfrancais.append(ligne.strip(' \n'))
-
-for mot in motsfrancais:
-    if len(mot) <= 2:
-        motsfrancais.remove(mot)
+    mot = ligne.strip('\n').upper()
+    if len(mot) > 2:
+        motsfrancais.append(mot)
 
 
 def ajouter_mot(dic, mot):
@@ -111,11 +108,6 @@ async def boggle(ctx):
 
     def est_commande(msg):
         return '!' in msg.content
-# @interactions_bot.command(name="boggle", description="Lance une partie de boggle")
-# async def boggle(ctx: interactions.CommandContext):
-#     print("here")
-#     interaction_response = await ctx.send("Partie en cours de préparation...", ephemeral=True)
-#     await interaction_response.delete()
 
     try:
         if ctx.author.nick is not None:
