@@ -1,8 +1,9 @@
-from random import randint
 import time
 import sys
+import interactions
 
-from config import bot
+from random import randint
+from config import bot, interactions_bot
 
 path = "assets/dictionnaire.txt"
 
@@ -108,6 +109,11 @@ async def boggle(ctx):
 
     def est_commande(msg):
         return '!' in msg.content
+# @interactions_bot.command(name="boggle", description="Lance une partie de boggle")
+# async def boggle(ctx: interactions.CommandContext):
+#     print("here")
+#     interaction_response = await ctx.send("Partie en cours de préparation...", ephemeral=True)
+#     await interaction_response.delete()
 
     try:
         if ctx.author.nick is not None:
