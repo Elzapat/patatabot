@@ -11,11 +11,9 @@ motsfrancais = []
 file = open(path, 'r')
 
 for ligne in file:
-    motsfrancais.append(ligne.strip(' \n'))
-
-for mot in motsfrancais:
-    if len(mot) <= 2:
-        motsfrancais.remove(mot)
+    mot = ligne.strip('\n').upper()
+    if len(mot) > 2:
+        motsfrancais.append(mot)
 
 
 def ajouter_mot(dic, mot):
