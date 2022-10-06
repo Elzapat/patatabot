@@ -1,6 +1,7 @@
 import time
 import sys
 import interactions
+import asyncio
 
 from random import randint
 from config import bot, interactions_bot
@@ -117,9 +118,9 @@ async def boggle(ctx):
 
     try:
         if ctx.author.nick is not None:
-            texte = '%s joue au Boggle mes frères, encouragez-le !\n```\n' % ctx.author.nick
+            texte = '%s joue au Boggle mes frères, participons !\n```\n' % ctx.author.nick
         else:
-            texte = '%s joue au Boggle mes frères, encouragez-le !\n```\n' % ctx.author.name
+            texte = '%s joue au Boggle mes frères, participons !\n```\n' % ctx.author.name
     except:
         texte = 'Jeu de Boggle :\n```\n'
 
@@ -159,7 +160,10 @@ async def boggle(ctx):
                            ' secondes restantes\n\tPropose un mot avec `!`\n\tTape `!!stop` pour quitter\n' +
                            liste_mots))
 
-        reponse = await bot.wait_for("message", check=est_commande, timeout=180.0)
+        try:
+            reponse = await bot.wait_for("message", check=est_commande, timeout=(temps - time.time() + deb))
+        except asyncio.TimeoutError:
+            break
 
         if reponse.content == "!!stop":
             await reponse.delete()
