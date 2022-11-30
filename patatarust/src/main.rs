@@ -1,4 +1,5 @@
 mod puissance4;
+mod secret_santa;
 
 use puissance4::{check_command_validity, reaction_added, setup_game, stats::get_leaderbaord, Puissance4GameData};
 use serenity::{
@@ -12,6 +13,7 @@ use serenity::{
         },
         channel::Reaction,
         gateway::Ready,
+        id::GuildId,
     },
     prelude::*,
 };
@@ -34,7 +36,7 @@ impl TypeMapKey for PythonBot {
 
 struct Handler;
 
-async fn respond_to_interaction<'a, F>(http: impl AsRef<Http>, command: ApplicationCommandInteraction, message: F)
+pub async fn respond_to_interaction<'a, F>(http: impl AsRef<Http>, command: ApplicationCommandInteraction, message: F)
 where
     for<'b> F: FnOnce(&'b mut CreateInteractionResponseData<'a>) -> &'b mut CreateInteractionResponseData<'a>,
 {
@@ -100,6 +102,38 @@ impl EventHandler for Handler {
 
                     return;
                 }
+                "secret-santa" => {
+                    command.defer(&ctx.http).await.unwrap();
+
+                    let (show, mut content) = secret_santa::secret_santa(&command);
+
+                    if let Some(serde_json::Value::String(action)) = &command.data.options[0].value {
+                        match action.as_str() {
+                            "list" => {
+                                secret_santa::substitute_ids(
+                                    &ctx,
+                                    command.guild_id.unwrap_or(GuildId(675349992130478080)),
+                                    &mut content,
+                                )
+                                .await
+                            }
+                            "start" => {
+                                secret_santa::send_giftees(
+                                    &ctx,
+                                    command.guild_id.unwrap_or(GuildId(675349992130478080)),
+                                )
+                                .await
+                            }
+                            _ => {}
+                        }
+                    }
+
+                    command
+                        .create_followup_message(&ctx.http, |response| response.content(content).ephemeral(show))
+                        .await
+                        .unwrap();
+                    return;
+                }
                 "boggle" => return,
                 "dames" => "PAS ENCORE LÀ REVIENT PLUS TARD !!!".to_owned(),
                 "mitsuki" | "gaspard" => return,
@@ -129,6 +163,25 @@ impl EventHandler for Handler {
                         .description("Votre adversaire au Puissance 4")
                         .kind(CommandOptionType::User)
                         .required(false)
+                })
+        })
+        .await
+        .unwrap();
+
+        Command::create_global_application_command(&ctx.http, |command| {
+            command
+                .name("secret-santa")
+                .description("Le secret santa de la patate !")
+                .create_option(|option| {
+                    option
+                        .name("action")
+                        .description("Action to take")
+                        .kind(CommandOptionType::String)
+                        .required(true)
+                        .add_string_choice("enter", "enter")
+                        .add_string_choice("leave", "leave")
+                        .add_string_choice("list", "list")
+                        .add_string_choice("start", "start")
                 })
         })
         .await
@@ -167,9 +220,8 @@ async fn main() {
 
     let token = env::var("DISCORD_TOKEN").expect("Expected DISCORD_TOKEN in env");
 
-    let intents = GatewayIntents::GUILD_MESSAGES
-        | GatewayIntents::MESSAGE_CONTENT
-        | GatewayIntents::GUILD_MESSAGE_REACTIONS;
+    let intents =
+        GatewayIntents::GUILD_MESSAGES | GatewayIntents::MESSAGE_CONTENT | GatewayIntents::GUILD_MESSAGE_REACTIONS;
 
     let mut client = Client::builder(token, intents)
         .event_handler(Handler)

@@ -527,6 +527,7 @@ dependencies = [
  "rand",
  "ron",
  "serde",
+ "serde_json",
  "serenity",
  "tokio",
 ]
